@@ -1,6 +1,43 @@
 import { spawn, ChildProcess } from "node:child_process";
 import { Writable, Readable } from "node:stream";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import * as acp from "@agentclientprotocol/sdk";
+
+// Find claude-code-acp binary in common locations
+// Electron/Obsidian doesn't inherit shell PATH, so we need to search manually
+function findClaudeCodeAcp(): string {
+  const binaryName = process.platform === "win32" ? "claude-code-acp.cmd" : "claude-code-acp";
+
+  const searchPaths = [
+    // macOS Homebrew
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    // Linux
+    "/usr/bin",
+    "/usr/local/bin",
+    // npm global (macOS/Linux)
+    join(homedir(), ".npm-global", "bin"),
+    join(homedir(), ".nvm", "versions", "node"),
+    // npm global (Windows)
+    join(homedir(), "AppData", "Roaming", "npm"),
+    // pnpm
+    join(homedir(), ".local", "share", "pnpm"),
+    // Volta
+    join(homedir(), ".volta", "bin"),
+  ];
+
+  for (const dir of searchPaths) {
+    const fullPath = join(dir, binaryName);
+    if (existsSync(fullPath)) {
+      return fullPath;
+    }
+  }
+
+  // Fallback: try PATH anyway (might work in some cases)
+  return binaryName;
+}
 
 export interface AcpClientEvents {
   onMessage: (text: string) => void;
@@ -66,8 +103,12 @@ export class ObsidianAcpClient implements acp.Client {
 
   async connect(workingDirectory: string): Promise<void> {
     try {
+      // Find claude-code-acp binary
+      const acpPath = findClaudeCodeAcp();
+      console.log(`[ACP] Using binary: ${acpPath}`);
+
       // Spawn claude-code-acp process
-      this.process = spawn("claude-code-acp", [], {
+      this.process = spawn(acpPath, [], {
         stdio: ["pipe", "pipe", "inherit"],
         env: {
           ...process.env,
