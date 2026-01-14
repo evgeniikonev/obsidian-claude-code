@@ -39,13 +39,32 @@ function findClaudeCodeAcp(): string {
   return binaryName;
 }
 
+/**
+ * Extended event interface for Phase 4.1 components
+ */
 export interface AcpClientEvents {
-  onMessage: (text: string) => void;
-  onToolCall: (title: string, status: string) => void;
+  // Message streaming
+  onMessageChunk: (content: acp.ContentBlock) => void;
+  onThoughtChunk: (content: acp.ContentBlock) => void;
+  onMessageComplete: () => void;
+
+  // Tool calls
+  onToolCall: (toolCall: acp.ToolCall & { sessionUpdate: "tool_call" }) => void;
+  onToolCallUpdate: (update: acp.ToolCallUpdate & { sessionUpdate: "tool_call_update" }) => void;
+
+  // Plan
+  onPlan: (plan: acp.Plan & { sessionUpdate: "plan" }) => void;
+
+  // Permission
   onPermissionRequest: (params: acp.RequestPermissionRequest) => Promise<acp.RequestPermissionResponse>;
+
+  // Connection lifecycle
   onError: (error: Error) => void;
   onConnected: () => void;
   onDisconnected: () => void;
+
+  // Legacy (for backward compatibility)
+  onMessage?: (text: string) => void;
 }
 
 export class ObsidianAcpClient implements acp.Client {
@@ -70,17 +89,45 @@ export class ObsidianAcpClient implements acp.Client {
 
     switch (update.sessionUpdate) {
       case "agent_message_chunk":
-        if (update.content.type === "text") {
-          this.events.onMessage(update.content.text);
+        // New Phase 4.1 handler
+        this.events.onMessageChunk(update.content);
+        // Legacy fallback
+        if (this.events.onMessage && update.content.type === "text") {
+          this.events.onMessage(update.content.text ?? "");
         }
         break;
+
+      case "agent_thought_chunk":
+        this.events.onThoughtChunk(update.content);
+        break;
+
       case "tool_call":
-        this.events.onToolCall(update.title ?? "Tool", update.status ?? "running");
+        this.events.onToolCall(update);
         break;
+
       case "tool_call_update":
-        this.events.onToolCall(`Tool ${update.toolCallId ?? "unknown"}`, update.status ?? "updated");
+        this.events.onToolCallUpdate(update);
         break;
+
+      case "plan":
+        this.events.onPlan(update);
+        break;
+
+      case "user_message_chunk":
+        // Echo of user message, typically ignored
+        console.log("[ACP] User message echo:", update.content);
+        break;
+
+      case "available_commands_update":
+      case "current_mode_update":
+      case "config_option_update":
+      case "session_info_update":
+        // These are informational updates, log for now
+        console.log(`[ACP] ${update.sessionUpdate}:`, update);
+        break;
+
       default:
+        console.log("[ACP] Unknown session update:", update);
         break;
     }
   }
@@ -200,6 +247,9 @@ export class ObsidianAcpClient implements acp.Client {
     });
 
     console.log(`[ACP] Prompt completed: ${result.stopReason}`);
+
+    // Signal message completion
+    this.events.onMessageComplete();
   }
 
   async disconnect(): Promise<void> {

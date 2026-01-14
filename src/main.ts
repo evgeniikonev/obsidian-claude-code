@@ -1,6 +1,7 @@
 import { Plugin, Notice, WorkspaceLeaf } from "obsidian";
 import { ObsidianAcpClient, AcpClientEvents } from "./acpClient";
 import { ChatView, CHAT_VIEW_TYPE } from "./views/ChatView";
+import { PermissionModal } from "./components";
 
 export default class ClaudeCodePlugin extends Plugin {
   private acpClient: ObsidianAcpClient | null = null;
@@ -15,28 +16,45 @@ export default class ClaudeCodePlugin extends Plugin {
       return this.chatView;
     });
 
-    // Create ACP client with event handlers
+    // Create ACP client with Phase 4.1 event handlers
     const events: AcpClientEvents = {
-      onMessage: (text) => {
-        console.log("[Claude]", text);
-        this.chatView?.appendAssistantMessage(text);
+      // Message streaming
+      onMessageChunk: (content) => {
+        this.chatView?.onMessageChunk(content);
       },
-      onToolCall: (title, status) => {
-        console.log(`[Tool] ${title}: ${status}`);
-        this.chatView?.onToolCall(title, status);
+      onThoughtChunk: (content) => {
+        this.chatView?.onThoughtChunk(content);
       },
+      onMessageComplete: () => {
+        this.chatView?.completeAssistantMessage();
+      },
+
+      // Tool calls
+      onToolCall: (toolCall) => {
+        console.log(`[Tool] ${toolCall.title}: ${toolCall.status}`);
+        this.chatView?.onToolCall(toolCall);
+      },
+      onToolCallUpdate: (update) => {
+        console.log(`[Tool Update] ${update.toolCallId}: ${update.status}`);
+        this.chatView?.onToolCallUpdate(update);
+      },
+
+      // Plan
+      onPlan: (plan) => {
+        console.log(`[Plan] ${plan.entries.length} entries`);
+        this.chatView?.onPlan(plan);
+      },
+
+      // Permission request with modal UI
       onPermissionRequest: async (params) => {
-        // For now, auto-approve first option
-        // TODO: Show UI modal for permission
         console.log(`[Permission] ${params.toolCall.title}`);
-        new Notice(`Claude Code: ${params.toolCall.title}`);
-        return {
-          outcome: {
-            outcome: "selected",
-            optionId: params.options[0].optionId,
-          },
-        };
+
+        // Show permission modal
+        const modal = new PermissionModal(this.app, params);
+        return await modal.waitForResponse();
       },
+
+      // Connection lifecycle
       onError: (error) => {
         console.error("[ACP Error]", error);
         new Notice(`Claude Code Error: ${error.message}`);
@@ -51,6 +69,12 @@ export default class ClaudeCodePlugin extends Plugin {
         console.log("[ACP] Disconnected");
         new Notice("Claude Code: Disconnected");
         this.chatView?.updateStatus("disconnected");
+      },
+
+      // Legacy fallback (optional)
+      onMessage: (text) => {
+        // Used for backward compatibility if needed
+        console.log("[Claude Legacy]", text.slice(0, 50));
       },
     };
 
@@ -130,9 +154,10 @@ export default class ClaudeCodePlugin extends Plugin {
 
     try {
       await this.acpClient.sendMessage(text);
-      this.chatView?.completeAssistantMessage();
-    } finally {
+      // Note: completeAssistantMessage is now called via onMessageComplete event
+    } catch (error) {
       this.chatView?.updateStatus("connected");
+      throw error;
     }
   }
 

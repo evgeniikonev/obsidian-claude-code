@@ -171,3 +171,474 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ===== Phase 4.1 Components ===== */
+
+/* Thinking Block */
+.thinking-block {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  margin: 8px 0;
+  overflow: hidden;
+}
+
+.thinking-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  gap: 8px;
+  background: var(--background-secondary-alt);
+}
+
+.thinking-header:hover {
+  background: var(--background-modifier-hover);
+}
+
+.thinking-icon {
+  font-size: 14px;
+}
+
+.thinking-label {
+  flex-grow: 1;
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thinking-toggle {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.thinking-content {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  font-family: var(--font-monospace);
+  max-height: 300px;
+  overflow-y: auto;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.thinking-complete .thinking-header {
+  opacity: 0.8;
+}
+
+/* Tool Call Card */
+.tool-card {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  margin: 8px 0;
+  overflow: hidden;
+}
+
+.tool-card-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  gap: 8px;
+  background: var(--background-secondary-alt);
+}
+
+.tool-card-icon {
+  font-size: 14px;
+}
+
+.tool-card-title {
+  flex-grow: 1;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tool-card-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.tool-card-status.status-pending {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+.tool-card-status.status-in_progress {
+  background: var(--background-modifier-warning);
+  color: var(--text-warning);
+}
+
+.tool-card-status.status-completed {
+  background: var(--background-modifier-success);
+  color: var(--text-success);
+}
+
+.tool-card-status.status-failed {
+  background: var(--background-modifier-error);
+  color: var(--text-error);
+}
+
+.tool-card-details {
+  padding: 8px 12px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.tool-card-path {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.tool-card-content {
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Tool Card - Diff */
+.tool-card-diff {
+  padding: 8px 12px;
+}
+
+.diff-header {
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+}
+
+.diff-content {
+  background: var(--background-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.diff-hunk {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+}
+
+.diff-hunk-header {
+  padding: 4px 8px;
+  background: var(--background-secondary-alt);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.diff-line {
+  padding: 1px 8px;
+  white-space: pre;
+}
+
+.diff-line-add {
+  background: rgba(0, 200, 83, 0.15);
+  color: var(--text-success);
+}
+
+.diff-line-remove {
+  background: rgba(255, 82, 82, 0.15);
+  color: var(--text-error);
+}
+
+.diff-line-context {
+  color: var(--text-muted);
+}
+
+.diff-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.diff-view-btn {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+}
+
+.diff-view-btn:hover {
+  background: var(--background-modifier-border);
+}
+
+/* Tool Card - Terminal */
+.tool-card-terminal {
+  padding: 8px 12px;
+}
+
+.terminal-command {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  padding: 6px 8px;
+  background: var(--background-primary);
+  border-radius: 4px;
+  color: var(--text-accent);
+  margin-bottom: 8px;
+}
+
+.terminal-output {
+  background: var(--background-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.terminal-output pre {
+  margin: 0;
+  padding: 8px;
+  font-size: 11px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.terminal-exit {
+  font-size: 11px;
+  padding: 4px 8px;
+  margin-top: 4px;
+}
+
+.terminal-exit.exit-success {
+  color: var(--text-success);
+}
+
+.terminal-exit.exit-error {
+  color: var(--text-error);
+}
+
+/* Permission Modal */
+.permission-modal {
+  max-width: 500px;
+}
+
+.permission-header h2 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+}
+
+.permission-tool-info {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.permission-tool-title {
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.permission-paths {
+  margin-top: 8px;
+}
+
+.permission-path {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.permission-command {
+  margin-top: 8px;
+}
+
+.permission-command code {
+  display: block;
+  background: var(--background-primary);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-accent);
+}
+
+.permission-options {
+  margin: 16px 0;
+}
+
+.permission-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.permission-option:hover {
+  background: var(--background-modifier-hover);
+}
+
+.permission-option input[type="radio"] {
+  margin: 0;
+}
+
+.permission-option label {
+  cursor: pointer;
+  flex-grow: 1;
+}
+
+.permission-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.permission-btn-cancel {
+  padding: 8px 16px;
+  border-radius: 4px;
+  background: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+}
+
+.permission-btn-confirm {
+  padding: 8px 16px;
+  border-radius: 4px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  cursor: pointer;
+}
+
+.permission-btn-confirm:hover {
+  opacity: 0.9;
+}
+
+/* Diff Viewer (Full) */
+.diff-viewer {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  overflow: hidden;
+}
+
+.diff-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--background-secondary-alt);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.diff-stats {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.diff-stat-add {
+  color: var(--text-success);
+}
+
+.diff-stat-del {
+  color: var(--text-error);
+}
+
+.diff-viewer-content {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+}
+
+.diff-viewer-hunk {
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.diff-viewer-hunk-header {
+  padding: 4px 12px;
+  background: var(--background-secondary-alt);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.diff-viewer-lines {
+  background: var(--background-primary);
+}
+
+.diff-viewer-line {
+  display: flex;
+  align-items: stretch;
+}
+
+.diff-line-gutter {
+  display: flex;
+  flex-shrink: 0;
+  border-right: 1px solid var(--background-modifier-border);
+}
+
+.diff-line-num-old,
+.diff-line-num-new {
+  width: 40px;
+  padding: 1px 8px;
+  text-align: right;
+  color: var(--text-muted);
+  font-size: 11px;
+  background: var(--background-secondary);
+}
+
+.diff-line-content {
+  flex-grow: 1;
+  padding: 1px 8px;
+  white-space: pre;
+}
+
+/* Plan View */
+.plan-view {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  margin: 8px 0;
+  overflow: hidden;
+}
+
+.plan-header {
+  padding: 10px 12px;
+  font-weight: 500;
+  background: var(--background-secondary-alt);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.plan-entries {
+  padding: 8px 0;
+}
+
+.plan-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+}
+
+.plan-entry-icon {
+  font-size: 12px;
+}
+
+.plan-entry-title {
+  font-size: 13px;
+}
+
+.plan-entry-pending {
+  opacity: 0.6;
+}
+
+.plan-entry-in_progress {
+  background: var(--background-modifier-hover);
+}
+
+.plan-entry-completed .plan-entry-title {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.plan-entry-failed {
+  background: rgba(255, 82, 82, 0.1);
+}

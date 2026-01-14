@@ -1,5 +1,7 @@
 import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon } from "obsidian";
 import type ClaudeCodePlugin from "../main";
+import type * as acp from "@agentclientprotocol/sdk";
+import { ThinkingBlock, ToolCallCard } from "../components";
 
 export const CHAT_VIEW_TYPE = "claude-code-chat";
 
@@ -17,7 +19,20 @@ export class ChatView extends ItemView {
   private sendButton: HTMLButtonElement;
   private statusIndicator: HTMLElement;
   private messages: Message[] = [];
+
+  // Streaming state
   private currentAssistantMessage: string = "";
+  private currentStreamingEl: HTMLElement | null = null;
+
+  // Thinking state
+  private currentThinkingBlock: ThinkingBlock | null = null;
+
+  // Tool calls state (track by ID for updates)
+  private toolCallCards: Map<string, ToolCallCard> = new Map();
+
+  // Batch update for streaming performance
+  private pendingText: string = "";
+  private updateScheduled: boolean = false;
 
   constructor(leaf: WorkspaceLeaf, plugin: ClaudeCodePlugin) {
     super(leaf);
@@ -91,7 +106,10 @@ export class ChatView extends ItemView {
   }
 
   async onClose(): Promise<void> {
-    // Cleanup if needed
+    // Cleanup
+    this.toolCallCards.clear();
+    this.currentThinkingBlock = null;
+    this.currentStreamingEl = null;
   }
 
   private async handleConnect(): Promise<void> {
@@ -126,8 +144,8 @@ export class ChatView extends ItemView {
     this.textarea.value = "";
     this.textarea.style.height = "auto";
 
-    // Start streaming response
-    this.currentAssistantMessage = "";
+    // Reset streaming state
+    this.resetStreamingState();
     this.updateStatus("thinking");
 
     try {
@@ -138,42 +156,184 @@ export class ChatView extends ItemView {
         content: `❌ Error: ${(error as Error).message}`,
         timestamp: new Date(),
       });
+      this.updateStatus("connected");
     }
   }
 
-  // Called by plugin when receiving message chunks
+  private resetStreamingState(): void {
+    this.currentAssistantMessage = "";
+    this.currentStreamingEl = null;
+    this.currentThinkingBlock = null;
+    this.toolCallCards.clear();
+    this.pendingText = "";
+    this.updateScheduled = false;
+  }
+
+  // ===== Session Update Handlers =====
+
+  /**
+   * Handle agent thought chunk (internal reasoning)
+   */
+  onThoughtChunk(content: acp.ContentBlock): void {
+    if (content.type !== "text") return;
+
+    // Create thinking block if not exists
+    if (!this.currentThinkingBlock) {
+      this.currentThinkingBlock = new ThinkingBlock(this.messagesContainer);
+    }
+
+    this.currentThinkingBlock.appendText(content.text ?? "");
+    this.scrollToBottom();
+  }
+
+  /**
+   * Handle agent message chunk (final response)
+   */
+  onMessageChunk(content: acp.ContentBlock): void {
+    if (content.type !== "text") return;
+
+    // Finalize thinking block if exists
+    if (this.currentThinkingBlock) {
+      this.currentThinkingBlock.complete();
+      this.currentThinkingBlock = null;
+    }
+
+    // Batch text updates for performance
+    this.pendingText += content.text ?? "";
+
+    if (!this.updateScheduled) {
+      this.updateScheduled = true;
+      requestAnimationFrame(() => {
+        this.currentAssistantMessage += this.pendingText;
+        this.pendingText = "";
+        this.updateScheduled = false;
+        this.updateStreamingMessage();
+      });
+    }
+  }
+
+  /**
+   * Handle new tool call
+   */
+  onToolCall(toolCall: acp.ToolCall & { sessionUpdate: "tool_call" }): void {
+    const toolCallId = toolCall.toolCallId ?? `tool-${Date.now()}`;
+
+    // Create tool card
+    const card = new ToolCallCard(this.messagesContainer, toolCall, {
+      onViewDiff: (diff) => this.showDiffModal(diff),
+    });
+
+    this.toolCallCards.set(toolCallId, card);
+    this.scrollToBottom();
+  }
+
+  /**
+   * Handle tool call update
+   */
+  onToolCallUpdate(update: acp.ToolCallUpdate & { sessionUpdate: "tool_call_update" }): void {
+    const toolCallId = update.toolCallId ?? "";
+    const card = this.toolCallCards.get(toolCallId);
+
+    if (card) {
+      card.update(update);
+    } else {
+      console.warn(`[ChatView] Tool call not found: ${toolCallId}`);
+    }
+
+    this.scrollToBottom();
+  }
+
+  /**
+   * Handle plan update
+   */
+  onPlan(plan: acp.Plan & { sessionUpdate: "plan" }): void {
+    // Create or update plan display
+    let planEl = this.messagesContainer.querySelector(".plan-view") as HTMLElement;
+
+    if (!planEl) {
+      planEl = this.messagesContainer.createDiv({ cls: "plan-view" });
+    }
+
+    planEl.empty();
+
+    const header = planEl.createDiv({ cls: "plan-header" });
+    header.setText("📋 Plan");
+
+    const entries = planEl.createDiv({ cls: "plan-entries" });
+
+    for (const entry of plan.entries) {
+      const entryEl = entries.createDiv({ cls: `plan-entry plan-entry-${entry.status}` });
+
+      // Status icon based on PlanEntryStatus: "pending" | "in_progress" | "completed"
+      const statusIcon = entry.status === "completed" ? "✅" :
+                        entry.status === "in_progress" ? "🔄" : "⏳";
+
+      const iconEl = entryEl.createSpan({ cls: "plan-entry-icon" });
+      iconEl.setText(statusIcon);
+
+      const titleEl = entryEl.createSpan({ cls: "plan-entry-title" });
+      titleEl.setText(entry.content);
+    }
+
+    this.scrollToBottom();
+  }
+
+  // ===== Legacy Methods (for backward compatibility) =====
+
+  /**
+   * @deprecated Use onMessageChunk instead
+   */
   appendAssistantMessage(text: string): void {
     this.currentAssistantMessage += text;
     this.updateStreamingMessage();
   }
 
-  // Called when assistant message is complete
+  /**
+   * Called when assistant response is complete
+   */
   completeAssistantMessage(): void {
+    // Finalize thinking block if exists
+    if (this.currentThinkingBlock) {
+      this.currentThinkingBlock.complete();
+      this.currentThinkingBlock = null;
+    }
+
+    // Finalize streaming message
     if (this.currentAssistantMessage) {
+      // Remove streaming class
+      if (this.currentStreamingEl) {
+        this.currentStreamingEl.removeClass("message-streaming");
+      }
+
       this.messages.push({
         role: "assistant",
         content: this.currentAssistantMessage,
         timestamp: new Date(),
       });
+
       this.currentAssistantMessage = "";
+      this.currentStreamingEl = null;
     }
+
     this.updateStatus("connected");
   }
 
+  // ===== Private Methods =====
+
   private updateStreamingMessage(): void {
     // Find or create streaming message element
-    let streamingEl = this.messagesContainer.querySelector(".message-streaming");
-
-    if (!streamingEl) {
-      streamingEl = this.messagesContainer.createDiv({ cls: "message message-assistant message-streaming" });
+    if (!this.currentStreamingEl) {
+      this.currentStreamingEl = this.messagesContainer.createDiv({
+        cls: "message message-assistant message-streaming",
+      });
     }
 
     // Render markdown content
-    streamingEl.empty();
+    this.currentStreamingEl.empty();
     MarkdownRenderer.render(
       this.app,
       this.currentAssistantMessage,
-      streamingEl as HTMLElement,
+      this.currentStreamingEl,
       "",
       this
     );
@@ -204,6 +364,12 @@ export class ChatView extends ItemView {
     this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
   }
 
+  private showDiffModal(diff: acp.Diff): void {
+    // For now, just log. Full modal will be added later.
+    console.log("[ChatView] Show diff modal:", diff.path);
+    // TODO: Implement DiffModal
+  }
+
   updateStatus(status: "disconnected" | "connecting" | "connected" | "thinking"): void {
     this.statusIndicator.empty();
     this.statusIndicator.removeClass("status-disconnected", "status-connecting", "status-connected", "status-thinking");
@@ -217,11 +383,5 @@ export class ChatView extends ItemView {
     };
 
     this.statusIndicator.setText(statusText[status]);
-  }
-
-  onToolCall(title: string, status: string): void {
-    // Add tool call indicator to current streaming message
-    const toolIndicator = `\n\n🔧 **${title}**: ${status}\n\n`;
-    this.appendAssistantMessage(toolIndicator);
   }
 }
