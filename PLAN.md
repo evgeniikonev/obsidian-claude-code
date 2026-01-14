@@ -37,7 +37,7 @@
 - [x] Initialize `ClientSideConnection` from SDK
 - [x] Implement incoming message handling from agent
 - [x] Implement user message sending
-- [x] Error handling
+- [x] Error handling and logging
 
 ### 2.3 Connection Verification
 - [x] Command Palette: "Claude Code: Connect"
@@ -69,24 +69,244 @@
 
 ---
 
-## Phase 4: Tool Calls & Permissions
+## Phase 4: Full Agent UI (Claude Code Experience)
 
-### 4.1 Permission Requests UI
-- [ ] Modal for tool call confirmation
-- [ ] Display: which tool, what parameters
-- [ ] Buttons: Approve / Deny / Approve All
-- [ ] Timeout handling
+This phase transforms basic chat into full Claude Code experience with all agent controls.
 
-### 4.2 Edit Review
-- [ ] Diff viewer for proposed file changes
-- [ ] Syntax highlighting (if possible via Obsidian API)
-- [ ] Accept / Reject changes
-- [ ] Batch operations
+### 4.1 Message Types & Components
 
-### 4.3 Terminal Output
-- [ ] Display stdout/stderr from commands
-- [ ] Distinguish interactive vs background terminals
-- [ ] Copy to clipboard
+Based on ACP `sessionUpdate` types, we need to render:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Chat View                                                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─ User Message ─────────────────────────────────────────┐ │
+│  │ "Help me refactor this function"                       │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌─ Agent Thinking ───────────────────────────────────────┐ │
+│  │ 💭 Analyzing code structure...                         │ │
+│  │    Looking at function dependencies...                 │ │
+│  │    (collapsible, shows thinking process)               │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌─ Tool Call: Read File ─────────────────────────────────┐ │
+│  │ 📖 Reading src/utils.ts                                │ │
+│  │ Status: ✅ completed                                   │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌─ Tool Call: Edit File ─────────────────────────────────┐ │
+│  │ ✏️ Editing src/utils.ts                                │ │
+│  │ ┌─ Diff View ────────────────────────────────────────┐ │ │
+│  │ │ - function old() {                                 │ │ │
+│  │ │ + function new() {                                 │ │ │
+│  │ └────────────────────────────────────────────────────┘ │ │
+│  │ [✓ Accept] [✗ Reject] [👁 View Full]                   │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌─ Permission Request ───────────────────────────────────┐ │
+│  │ ⚠️ Claude wants to run a command:                      │ │
+│  │ $ npm test                                             │ │
+│  │ [✓ Allow] [✓ Allow All] [✗ Deny]                       │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌─ Terminal Output ──────────────────────────────────────┐ │
+│  │ 🖥️ npm test                                            │ │
+│  │ ┌────────────────────────────────────────────────────┐ │ │
+│  │ │ PASS src/utils.test.ts                             │ │ │
+│  │ │ ✓ should format date (5ms)                         │ │ │
+│  │ │ ✓ should parse input (2ms)                         │ │ │
+│  │ └────────────────────────────────────────────────────┘ │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌─ Agent Question ───────────────────────────────────────┐ │
+│  │ ❓ Which testing framework do you prefer?              │ │
+│  │ [Jest] [Vitest] [Mocha] [Other...]                     │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌─ Agent Response ───────────────────────────────────────┐ │
+│  │ ✅ Done! I've refactored the function:                 │ │
+│  │ • Extracted helper methods                             │ │
+│  │ • Added type annotations                               │ │
+│  │ • Updated tests                                        │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│ [Type your message...]                            [Send]    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 4.2 ACP Session Updates to Handle
+
+| ACP Update Type | UI Component | Description |
+|-----------------|--------------|-------------|
+| `agent_thought_chunk` | Thinking Block | Agent's reasoning process (collapsible) |
+| `agent_message_chunk` | Response Block | Final response text |
+| `user_message_chunk` | User Message | Echo of user input |
+| `tool_call` | Tool Card | Tool invocation with status |
+| `tool_call_update` | Tool Card Update | Progress/completion |
+| `plan` | Plan View | Multi-step plan display |
+
+### 4.3 Component: Thinking Block
+```
+┌─ 💭 Thinking ──────────────────────────────────── [▼ Collapse]
+│ Let me analyze this code...
+│ I can see the function has several issues:
+│ 1. No error handling
+│ 2. Hardcoded values
+│ ...
+└────────────────────────────────────────────────────────────────
+```
+- [ ] Collapsible by default (show summary)
+- [ ] Expand to see full thinking
+- [ ] Streaming text as agent thinks
+- [ ] Different styling from response
+
+### 4.4 Component: Tool Call Card
+```
+┌─ 🔧 Tool: Read File ────────────────────────────── Status: ✅
+│ Path: src/components/Button.tsx
+│
+│ [📋 Copy Path] [👁 View Content]
+└────────────────────────────────────────────────────────────────
+```
+- [ ] Show tool name and icon
+- [ ] Display parameters (file path, command, etc.)
+- [ ] Status indicator (pending → running → completed/failed)
+- [ ] Quick actions (copy, view)
+
+### 4.5 Component: Permission Request Modal
+```
+┌─────────────────────────────────────────────────────────────┐
+│ ⚠️  Permission Required                                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ Claude wants to execute a command:                          │
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ $ rm -rf node_modules && npm install                    │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ ○ Allow once                                                │
+│ ○ Allow for this session                                    │
+│ ○ Always allow (add to whitelist)                           │
+│                                                             │
+│              [Cancel]  [Allow]                              │
+└─────────────────────────────────────────────────────────────┘
+```
+- [ ] Modal overlay
+- [ ] Show tool name and full parameters
+- [ ] Permission options (once, session, always)
+- [ ] Keyboard shortcuts (Enter = Allow, Esc = Cancel)
+- [ ] Timeout indicator
+
+### 4.6 Component: Diff Viewer
+```
+┌─ ✏️ Edit: src/utils.ts ─────────────────────────────────────┐
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │   10 │   function formatDate(date) {                    │ │
+│ │ - 11 │     return date.toString();                      │ │
+│ │ + 11 │     return new Intl.DateTimeFormat('en-US', {    │ │
+│ │ + 12 │       dateStyle: 'medium'                        │ │
+│ │ + 13 │     }).format(date);                             │ │
+│ │   14 │   }                                              │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ [✓ Accept] [✗ Reject] [📋 Copy] [👁 Full File]              │
+└─────────────────────────────────────────────────────────────┘
+```
+- [ ] Side-by-side or inline diff view
+- [ ] Syntax highlighting
+- [ ] Line numbers
+- [ ] Accept/Reject buttons
+- [ ] Copy diff to clipboard
+- [ ] View full file context
+
+### 4.7 Component: Terminal Output
+```
+┌─ 🖥️ Terminal: npm test ──────────────────────── [📋 Copy All]
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ > jest --coverage                                       │ │
+│ │                                                         │ │
+│ │ PASS src/utils.test.ts                                  │ │
+│ │   ✓ formatDate returns correct format (5ms)            │ │
+│ │   ✓ parseInput handles edge cases (3ms)                │ │
+│ │                                                         │ │
+│ │ Test Suites: 1 passed, 1 total                         │ │
+│ │ Tests:       2 passed, 2 total                         │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│ Exit code: 0                                                │
+└─────────────────────────────────────────────────────────────┘
+```
+- [ ] Monospace font
+- [ ] ANSI color support (or strip colors)
+- [ ] Auto-scroll during execution
+- [ ] Copy output button
+- [ ] Collapsible for long output
+- [ ] Exit code indicator
+
+### 4.8 Component: Agent Question
+```
+┌─ ❓ Claude is asking ────────────────────────────────────────┐
+│                                                             │
+│ Which package manager do you want to use?                   │
+│                                                             │
+│ [npm]  [yarn]  [pnpm]  [bun]                               │
+│                                                             │
+│ Or type custom answer: [_______________]                    │
+└─────────────────────────────────────────────────────────────┘
+```
+- [ ] Display question text
+- [ ] Render provided options as buttons
+- [ ] Free text input option
+- [ ] Submit on click or Enter
+
+### 4.9 Component: Plan/Todo View
+```
+┌─ 📋 Plan ────────────────────────────────────────────────────┐
+│                                                             │
+│ ✅ 1. Read current implementation                           │
+│ ✅ 2. Identify refactoring opportunities                    │
+│ 🔄 3. Apply changes to utils.ts                             │
+│ ⏳ 4. Update tests                                          │
+│ ⏳ 5. Run test suite                                        │
+│                                                             │
+│ Progress: [████████░░░░░░░░] 3/5                            │
+└─────────────────────────────────────────────────────────────┘
+```
+- [ ] List of steps with status icons
+- [ ] Progress bar
+- [ ] Current step highlighted
+- [ ] Collapsible details per step
+
+### 4.10 Implementation Tasks
+
+#### 4.10.1 Refactor Message System
+- [ ] Create `MessageRenderer` class
+- [ ] Define `MessageBlock` types (thinking, tool, response, question, etc.)
+- [ ] Parse ACP updates into message blocks
+- [ ] Render blocks with appropriate components
+
+#### 4.10.2 Permission System
+- [ ] Implement `PermissionModal` component
+- [ ] Handle `requestPermission` callback properly
+- [ ] Add permission presets (allow once, session, always)
+- [ ] Store session permissions in memory
+- [ ] Store persistent permissions in settings
+
+#### 4.10.3 Diff System
+- [ ] Implement `DiffViewer` component
+- [ ] Parse unified diff format
+- [ ] Syntax highlighting with Obsidian's CodeMirror
+- [ ] Accept/Reject actions that respond to ACP
+
+#### 4.10.4 Styling
+- [ ] Create CSS for all components
+- [ ] Support light/dark themes
+- [ ] Responsive design for sidebar
+- [ ] Animations for status changes
 
 ---
 
@@ -96,34 +316,43 @@
 - [ ] Autocomplete for vault files when typing @
 - [ ] Fuzzy search by note names
 - [ ] Add file content to context
+- [ ] Preview on hover
 
-### 5.2 File Operations
-- [ ] Map vault path ↔ ACP file system
-- [ ] Read files via Obsidian API (vault.read)
-- [ ] Write files via Obsidian API (vault.modify/create)
-- [ ] Handle .obsidian and other system folders
+### 5.2 File Operations via Obsidian API
+- [ ] Implement `readTextFile` → `vault.read()`
+- [ ] Implement `writeTextFile` → `vault.modify()` / `vault.create()`
+- [ ] Handle binary files gracefully
+- [ ] Respect `.obsidian` and other system folders
 
 ### 5.3 Obsidian-specific Context
-- [ ] Frontmatter parsing
+- [ ] Frontmatter parsing and display
 - [ ] Wikilinks resolution
 - [ ] Tags extraction
-- [ ] Possibly: backlinks graph
+- [ ] Backlinks information
 
 ---
 
 ## Phase 6: Settings & Configuration
 
-### 6.1 Plugin Settings
-- [ ] Settings tab in Obsidian
-- [ ] Path to claude-code-acp (if not global)
-- [ ] ANTHROPIC_API_KEY (or use from env)
+### 6.1 Plugin Settings Tab
+- [ ] Authentication method (API key vs OAuth)
+- [ ] API key input (secure storage)
+- [ ] Path to claude-code-acp binary
 - [ ] Default model selection
 - [ ] Auto-connect on startup
+- [ ] Theme preferences
 
-### 6.2 Per-conversation Settings
-- [ ] System prompt customization
-- [ ] Context window management
-- [ ] Conversation history persistence
+### 6.2 Permission Settings
+- [ ] Default permission mode (ask, allow, deny)
+- [ ] Whitelisted commands
+- [ ] Whitelisted file patterns
+- [ ] Session vs persistent permissions
+
+### 6.3 UI Settings
+- [ ] Show/hide thinking by default
+- [ ] Compact vs expanded tool calls
+- [ ] Terminal output max lines
+- [ ] Diff view style (inline vs side-by-side)
 
 ---
 
@@ -144,17 +373,28 @@
 
 ## Phase 8: Advanced Features (Future)
 
-### 8.1 Custom Slash Commands
-- [ ] Register custom commands
-- [ ] Obsidian templates integration
+### 8.1 Conversation Management
+- [ ] Multiple parallel conversations
+- [ ] Conversation history persistence
+- [ ] Export conversation to note
+- [ ] Search in conversation history
 
-### 8.2 Multi-conversation
-- [ ] Multiple parallel chats
-- [ ] Conversation history
+### 8.2 Custom Slash Commands
+- [ ] `/help` - show available commands
+- [ ] `/clear` - clear conversation
+- [ ] `/model` - switch model
+- [ ] `/template` - use Obsidian template
 
 ### 8.3 MCP Integration
 - [ ] Client MCP servers via ACP
 - [ ] Obsidian-specific MCP server (tags, graph, search)
+- [ ] Custom MCP server configuration
+
+### 8.4 Advanced UI
+- [ ] Split view (code + chat)
+- [ ] Floating chat window
+- [ ] Keyboard shortcuts for all actions
+- [ ] Command palette integration
 
 ---
 
@@ -164,25 +404,33 @@
 Phase 1 (Foundation) ✅
     │
     ▼
-Phase 2 (ACP Connection) ✅ ──── Milestone: connection works
+Phase 2 (ACP Connection) ✅
     │
     ▼
-Phase 3 (Basic Chat) ✅ ──────── Milestone: can chat
+Phase 3 (Basic Chat) ✅
     │
     ▼
-Phase 7 (Distribution) ✅ ────── Milestone: installable release
+Phase 7 (Distribution) ✅
     │
     ▼
-Phase 4 (Tool Calls) ─────────── Milestone: agentic workflow
+Phase 4 (Full Agent UI) ◀── CURRENT FOCUS
+    │
+    ├─► 4.3 Thinking Block
+    ├─► 4.4 Tool Call Cards
+    ├─► 4.5 Permission Modal
+    ├─► 4.6 Diff Viewer
+    ├─► 4.7 Terminal Output
+    ├─► 4.8 Agent Questions
+    └─► 4.9 Plan View
     │
     ▼
-Phase 5 (Vault) ──────────────── Milestone: notes integration
+Phase 5 (Vault Integration)
     │
     ▼
-Phase 6 (Settings) ───────────── Milestone: production-ready
+Phase 6 (Settings)
     │
     ▼
-Phase 8 (Advanced) ───────────── Future iterations
+Phase 8 (Advanced)
 ```
 
 ---
@@ -191,23 +439,25 @@ Phase 8 (Advanced) ───────────── Future iterations
 
 | Risk | Mitigation |
 |------|------------|
-| Obsidian API limited for complex UI | Use React via `createRoot` (supported) |
-| stdio transport in Electron | Node.js available, child_process works |
-| ACP SDK may change | Pin version, watch for breaking changes |
-| Large vault files | Streaming, pagination, lazy loading |
+| Obsidian API limited for complex UI | Use vanilla JS/CSS, avoid React if possible |
+| Diff rendering complexity | Use simple line-by-line diff, no fancy libraries |
+| Permission UX complexity | Start with simple modal, iterate |
+| ACP SDK changes | Pin version, watch for breaking changes |
+| Large terminal output | Virtual scrolling, truncate with "show more" |
 
 ---
 
 ## Current Status
 
-✅ **Phase 1-3, 7 COMPLETED** — Plugin ready for testing and distribution
+✅ **Phase 1-3, 7 COMPLETED** — Basic plugin working
 
 **What works:**
-- ACP connection to claude-code-acp (headless test passed)
-- Chat UI with markdown rendering
-- Streaming responses
-- Status indicator
-- Ribbon icon and commands
+- ACP connection to claude-code-acp
+- Basic chat with streaming
+- OAuth and API key authentication
 - GitHub Actions release workflow
 
-**Next Step**: Phase 4 — Tool Calls & Permissions
+**Next Step**: Phase 4 — Full Agent UI
+- Start with Thinking Block and Tool Call Cards
+- Then Permission Modal
+- Then Diff Viewer and Terminal Output
