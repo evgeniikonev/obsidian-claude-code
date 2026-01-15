@@ -1,7 +1,8 @@
 import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon } from "obsidian";
 import type ClaudeCodePlugin from "../main";
 import type * as acp from "@agentclientprotocol/sdk";
-import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks, FileSuggest, resolveFileReferences } from "../components";
+import { TFile } from "obsidian";
+import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks, FileSuggest, resolveFileReferences, SelectionChipsContainer } from "../components";
 
 export const CHAT_VIEW_TYPE = "claude-code-chat";
 
@@ -42,6 +43,9 @@ export class ChatView extends ItemView {
 
   // File suggestion for [[ syntax
   private fileSuggest: FileSuggest | null = null;
+
+  // Selection chips for Cmd+L
+  private selectionChips: SelectionChipsContainer | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: ClaudeCodePlugin) {
     super(leaf);
@@ -90,7 +94,19 @@ export class ChatView extends ItemView {
     // Input container
     this.inputContainer = container.createDiv({ cls: "chat-input-container" });
 
-    this.textarea = this.inputContainer.createEl("textarea", {
+    // Selection chips container (for Cmd+L selections)
+    this.selectionChips = new SelectionChipsContainer(
+      this.inputContainer,
+      (id) => {
+        // When chip is removed, remove `@N` from textarea
+        this.removeSelectionMarker(id);
+      }
+    );
+
+    // Input row (textarea + send button)
+    const inputRow = this.inputContainer.createDiv({ cls: "chat-input-row" });
+
+    this.textarea = inputRow.createEl("textarea", {
       cls: "chat-input",
       attr: { placeholder: "Ask Claude Code..." },
     });
@@ -106,13 +122,16 @@ export class ChatView extends ItemView {
       }
     });
 
-    // Auto-resize textarea
+    // Auto-resize textarea and sync chips
     this.textarea.addEventListener("input", () => {
       this.textarea.style.height = "auto";
       this.textarea.style.height = Math.min(this.textarea.scrollHeight, 200) + "px";
+
+      // Sync chips with text - remove orphaned chips
+      this.syncChipsWithText();
     });
 
-    this.sendButton = this.inputContainer.createEl("button", { cls: "chat-send-btn" });
+    this.sendButton = inputRow.createEl("button", { cls: "chat-send-btn" });
     setIcon(this.sendButton, "send");
     this.sendButton.addEventListener("click", () => this.handleSend());
 
@@ -145,6 +164,10 @@ export class ChatView extends ItemView {
     // Cleanup FileSuggest
     this.fileSuggest?.destroy();
     this.fileSuggest = null;
+
+    // Cleanup SelectionChips
+    this.selectionChips?.destroy();
+    this.selectionChips = null;
 
     // Cleanup
     this.toolCallCards.clear();
@@ -180,7 +203,7 @@ export class ChatView extends ItemView {
       timestamp: new Date(),
     });
 
-    // Clear input
+    // Clear input and selection chips
     this.textarea.value = "";
     this.textarea.style.height = "auto";
 
@@ -188,8 +211,17 @@ export class ChatView extends ItemView {
     this.resetStreamingState();
     this.updateStatus("thinking");
 
-    // Resolve [[file]] references to full paths before sending
-    const resolvedText = resolveFileReferences(text, this.app);
+    // Get vault path for resolving files
+    const vaultPath = (this.app.vault.adapter as any).basePath;
+
+    // Resolve [[file]] references to full paths
+    let resolvedText = resolveFileReferences(text, this.app);
+
+    // Resolve @N selection markers to full paths
+    if (this.selectionChips) {
+      resolvedText = this.selectionChips.resolveMarkers(resolvedText, vaultPath);
+      this.selectionChips.clear(); // Clear chips after sending
+    }
 
     try {
       await this.plugin.sendMessage(resolvedText);
@@ -523,5 +555,75 @@ export class ChatView extends ItemView {
     };
 
     this.statusIndicator.setText(statusText[status]);
+  }
+
+  // ===== Selection Methods (Cmd+L) =====
+
+  /**
+   * Add a code selection from editor (called via Cmd+L command)
+   */
+  addSelection(file: TFile, startLine: number, endLine: number, text: string): void {
+    if (!this.selectionChips) return;
+
+    // Add chip and get ID
+    const id = this.selectionChips.addSelection(file, startLine, endLine, text);
+
+    // Insert @N marker at cursor position in textarea
+    const cursorPos = this.textarea.selectionStart ?? this.textarea.value.length;
+    const before = this.textarea.value.slice(0, cursorPos);
+    const after = this.textarea.value.slice(cursorPos);
+
+    // Add space before if needed
+    const needsSpaceBefore = before.length > 0 && !before.endsWith(" ") && !before.endsWith("\n");
+    const needsSpaceAfter = after.length > 0 && !after.startsWith(" ") && !after.startsWith("\n");
+
+    const marker = `${needsSpaceBefore ? " " : ""}\`@${id}\`${needsSpaceAfter ? " " : ""}`;
+
+    this.textarea.value = before + marker + after;
+
+    // Move cursor after marker
+    const newPos = cursorPos + marker.length;
+    this.textarea.setSelectionRange(newPos, newPos);
+
+    // Focus textarea
+    this.textarea.focus();
+
+    // Trigger resize
+    this.textarea.dispatchEvent(new Event("input"));
+  }
+
+  /**
+   * Remove `@N` marker from textarea when chip is removed
+   */
+  private removeSelectionMarker(id: number): void {
+    // Remove `@N` from text (with possible surrounding spaces)
+    this.textarea.value = this.textarea.value
+      .replace(new RegExp(`\\s*\`@${id}\`\\s*`, "g"), " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // Trigger resize (but don't re-sync to avoid loop)
+    this.textarea.style.height = "auto";
+    this.textarea.style.height = Math.min(this.textarea.scrollHeight, 200) + "px";
+  }
+
+  /**
+   * Sync chips with text - hide/show chips based on marker presence (supports undo)
+   */
+  private syncChipsWithText(): void {
+    if (!this.selectionChips) return;
+
+    const text = this.textarea.value;
+
+    // Find all `@N` markers in text
+    const visibleIds = new Set<number>();
+    const markerRegex = /`@(\d+)`/g;
+    let match;
+    while ((match = markerRegex.exec(text)) !== null) {
+      visibleIds.add(parseInt(match[1], 10));
+    }
+
+    // Sync chip visibility
+    this.selectionChips.syncVisibility(visibleIds);
   }
 }

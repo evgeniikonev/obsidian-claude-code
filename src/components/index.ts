@@ -16,3 +16,4 @@ export { PermissionModal, showQuickPermission } from "./PermissionModal";
 export { PermissionCard } from "./PermissionCard";
 export { CodeViewerModal, collapseCodeBlocks } from "./CodeViewer";
 export { FileSuggest, resolveFileReferences } from "./FileSuggest";
+export { SelectionChipsContainer, type FileSelection } from "./SelectionChip";

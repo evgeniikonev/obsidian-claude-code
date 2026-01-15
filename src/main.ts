@@ -1,4 +1,4 @@
-import { Plugin, Notice, WorkspaceLeaf } from "obsidian";
+import { Plugin, Notice, WorkspaceLeaf, MarkdownView } from "obsidian";
 import { ObsidianAcpClient, AcpClientEvents } from "./acpClient";
 import { ChatView, CHAT_VIEW_TYPE } from "./views/ChatView";
 
@@ -102,6 +102,35 @@ export default class ClaudeCodePlugin extends Plugin {
       id: "disconnect",
       name: "Disconnect",
       callback: () => this.disconnect(),
+    });
+
+    // Add selection to chat (Cmd+L)
+    this.addCommand({
+      id: "add-selection-to-chat",
+      name: "Add Selection to Chat",
+      hotkeys: [{ modifiers: ["Mod", "Shift"], key: "." }],
+      editorCallback: (editor, view) => {
+        const selection = editor.getSelection();
+        if (!selection) {
+          new Notice("No text selected");
+          return;
+        }
+
+        const file = view.file;
+        if (!file) {
+          new Notice("No file open");
+          return;
+        }
+
+        const from = editor.getCursor("from");
+        const to = editor.getCursor("to");
+
+        // Ensure chat view is open
+        this.activateChatView().then(() => {
+          // Add selection to chat
+          this.chatView?.addSelection(file, from.line + 1, to.line + 1, selection);
+        });
+      },
     });
 
     // Add ribbon icon
