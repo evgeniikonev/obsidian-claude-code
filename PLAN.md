@@ -453,7 +453,7 @@ Phase 8 (Advanced)
 ✅ **Phase 4 PARTIAL** — Agent UI components
 ✅ **Phase 5 PARTIAL** — Vault integration started
 
-**What works (v0.8.0):**
+**What works (v0.9.0):**
 - ACP connection to claude-code-acp
 - Basic chat with streaming
 - OAuth and API key authentication
@@ -468,18 +468,26 @@ Phase 8 (Advanced)
 - Click on `[[file]] (lines X-Y)` opens file and selects lines
 - Display `@N` markers as readable `[[file]] (lines)` format
 - **v0.8.0**: Clickable vault paths in tool cards (relative paths, click to open)
+- **v0.9.0**: Full-file diff view (Cursor-style) — reads file from disk, shows all lines with inline changes
 
 **Next Steps (Priority Order):**
 
 ### HIGH PRIORITY
 1. ~~**Convert agent paths to [[file]] links**~~ ✅ Done in v0.8.0
-2. **Diff Viewer (Phase 4.6)** — Full diff viewing for file edits with accept/reject ◀── CURRENT
+2. ~~**Diff Viewer (Phase 4.6)**~~ ✅ Done in v0.9.0
+3. **Batch Permission & Diff (Phase 4.11)** — Group multiple edits to same file ◀── CURRENT
+   - When multiple Edit tool calls target the same file:
+     - Show ONE permission request for all edits: "Edit file X (3 changes)"
+     - Show ONE DiffModal with ALL changes combined
+     - Apply all changes atomically
+   - Benefits: Better UX (fewer prompts), see full picture of changes
+   - Note: ACP already handles sequential edits correctly (re-reads file each time)
 
 ### MEDIUM PRIORITY
-3. **Settings Tab (Phase 6)** — Port config, hotkeys, UI preferences
-4. **File preview on hover** — Show content preview when hovering chips/links
-5. **Readable file markers** — Replace `@1` with `[[README]]` (first 6 chars of filename) in textarea
+4. **Settings Tab (Phase 6)** — Port config, hotkeys, UI preferences
+5. **File preview on hover** — Show content preview when hovering chips/links
+6. **Readable file markers** — Replace `@1` with `[[README]]` (first 6 chars of filename) in textarea
 
 ### LOW PRIORITY
-6. **Chat history (Phase 8.1)** — Save/load conversations
-7. **Agent Questions UI (Phase 4.8)** — Button-based answers
+7. **Chat history (Phase 8.1)** — Save/load conversations
+8. **Agent Questions UI (Phase 4.8)** — Button-based answers
