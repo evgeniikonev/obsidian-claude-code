@@ -143,7 +143,7 @@ export class SelectionChipsContainer {
   }
 
   /**
-   * Resolve `@N` markers in text to full file paths
+   * Resolve `@N` markers in text to full file paths (for agent)
    */
   resolveMarkers(text: string, vaultPath: string): string {
     return text.replace(/`@(\d+)`/g, (match, idStr) => {
@@ -163,6 +163,32 @@ export class SelectionChipsContainer {
           return `${fullPath}:${selection.startLine}`;
         } else {
           return `${fullPath}:${selection.startLine}-${selection.endLine}`;
+        }
+      }
+
+      return match; // Keep original if not found
+    });
+  }
+
+  /**
+   * Format `@N` markers for display in chat (as [[file]] links with line info)
+   */
+  formatMarkersForDisplay(text: string): string {
+    return text.replace(/`@(\d+)`/g, (match, idStr) => {
+      const id = parseInt(idStr, 10);
+      const selection = this.selections.get(id);
+
+      if (selection) {
+        // Full file - just [[filename]]
+        if (selection.isFullFile) {
+          return `[[${selection.file.path}]]`;
+        }
+
+        // Selection - [[filename]] (lines X-Y)
+        if (selection.startLine === selection.endLine) {
+          return `[[${selection.file.path}]] (line ${selection.startLine})`;
+        } else {
+          return `[[${selection.file.path}]] (lines ${selection.startLine}-${selection.endLine})`;
         }
       }
 

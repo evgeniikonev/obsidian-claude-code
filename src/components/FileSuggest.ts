@@ -361,7 +361,13 @@ export class FileSuggest {
 
     // Replace [[ + query with [[filename]]
     const before = value.slice(0, this.triggerStart);
-    const after = value.slice(cursorPos);
+    let after = value.slice(cursorPos);
+
+    // Skip existing ]] if present (Obsidian auto-completes [[ to [[]])
+    if (after.startsWith("]]")) {
+      after = after.slice(2);
+    }
+
     const newValue = `${before}[[${selected.path}]]${after}`;
 
     this.inputEl.value = newValue;

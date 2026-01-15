@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon, MarkdownView } from "obsidian";
 import type ClaudeCodePlugin from "../main";
 import type * as acp from "@agentclientprotocol/sdk";
 import { TFile } from "obsidian";
@@ -199,10 +199,16 @@ export class ChatView extends ItemView {
       return;
     }
 
-    // Add user message (show original with [[links]])
+    // Format text for display (replace @N with [[file]] links)
+    let displayText = text;
+    if (this.selectionChips) {
+      displayText = this.selectionChips.formatMarkersForDisplay(text);
+    }
+
+    // Add user message with formatted display
     this.addMessage({
       role: "user",
-      content: text,
+      content: displayText,
       timestamp: new Date(),
     });
 
@@ -217,14 +223,16 @@ export class ChatView extends ItemView {
     // Get vault path for resolving files
     const vaultPath = (this.app.vault.adapter as any).basePath;
 
-    // Resolve [[file]] references to full paths
+    // Resolve [[file]] references to full paths (for agent)
     let resolvedText = resolveFileReferences(text, this.app);
 
-    // Resolve @N selection markers to full paths
+    // Resolve @N selection markers to full paths (for agent)
     if (this.selectionChips) {
       resolvedText = this.selectionChips.resolveMarkers(resolvedText, vaultPath);
-      this.selectionChips.clear(); // Clear chips after sending
     }
+
+    // Clear chips after sending
+    this.selectionChips?.clear();
 
     try {
       await this.plugin.sendMessage(resolvedText);
@@ -471,6 +479,9 @@ export class ChatView extends ItemView {
     // Collapse long code blocks
     collapseCodeBlocks(contentEl, this.app);
 
+    // Make [[file]] links clickable
+    this.makeLinksClickable(contentEl);
+
     this.scrollToBottom();
   }
 
@@ -509,6 +520,9 @@ export class ChatView extends ItemView {
       this
     );
 
+    // Make [[file]] links clickable
+    this.makeLinksClickable(contentEl);
+
     // Collapse long code blocks in assistant messages
     if (message.role === "assistant") {
       collapseCodeBlocks(contentEl, this.app);
@@ -537,6 +551,65 @@ export class ChatView extends ItemView {
 
   private scrollToBottom(): void {
     this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+  }
+
+  /**
+   * Make [[file]] internal links clickable, with line selection support
+   */
+  private makeLinksClickable(container: HTMLElement): void {
+    const links = container.querySelectorAll("a.internal-link");
+
+    links.forEach((link) => {
+      const href = link.getAttribute("data-href") || link.getAttribute("href");
+      if (!href) return;
+
+      // Check if followed by (line X) or (lines X-Y)
+      let startLine: number | null = null;
+      let endLine: number | null = null;
+
+      const nextNode = link.nextSibling;
+      if (nextNode && nextNode.nodeType === Node.TEXT_NODE) {
+        const text = nextNode.textContent || "";
+        // Match (line 10) or (lines 10-20)
+        const lineMatch = text.match(/^\s*\(lines?\s+(\d+)(?:-(\d+))?\)/);
+        if (lineMatch) {
+          startLine = parseInt(lineMatch[1], 10);
+          endLine = lineMatch[2] ? parseInt(lineMatch[2], 10) : startLine;
+        }
+      }
+
+      link.addEventListener("click", async (e) => {
+        e.preventDefault();
+
+        // Try to find the file in vault
+        const file = this.app.metadataCache.getFirstLinkpathDest(href, "");
+
+        if (file) {
+          // Open the file
+          const leaf = await this.app.workspace.openLinkText(href, "", false);
+
+          // If we have line info, scroll to and select those lines
+          if (startLine !== null && endLine !== null) {
+            // Small delay to ensure file is loaded
+            setTimeout(() => {
+              const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+              if (activeView && activeView.editor) {
+                const editor = activeView.editor;
+                // Lines are 0-indexed in CodeMirror
+                const from = { line: startLine! - 1, ch: 0 };
+                const to = { line: endLine!, ch: 0 };
+
+                // Scroll to line and select
+                editor.setSelection(from, to);
+                editor.scrollIntoView({ from, to }, true);
+              }
+            }, 100);
+          }
+        } else {
+          console.log(`[ChatView] File not found: ${href}`);
+        }
+      });
+    });
   }
 
   private showDiffModal(diff: acp.Diff): void {
