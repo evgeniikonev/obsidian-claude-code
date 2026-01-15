@@ -2,7 +2,7 @@ import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon, MarkdownView } from
 import type ClaudeCodePlugin from "../main";
 import type * as acp from "@agentclientprotocol/sdk";
 import { TFile } from "obsidian";
-import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks, FileSuggest, resolveFileReferences, SelectionChipsContainer, formatAgentPaths } from "../components";
+import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks, FileSuggest, resolveFileReferences, SelectionChipsContainer, formatAgentPaths, DiffModal } from "../components";
 
 export const CHAT_VIEW_TYPE = "claude-code-chat";
 
@@ -621,9 +621,8 @@ export class ChatView extends ItemView {
   }
 
   private showDiffModal(diff: acp.Diff): void {
-    // For now, just log. Full modal will be added later.
-    console.log("[ChatView] Show diff modal:", diff.path);
-    // TODO: Implement DiffModal
+    const modal = new DiffModal(this.app, diff);
+    modal.open();
   }
 
   updateStatus(status: "disconnected" | "connecting" | "connected" | "thinking"): void {

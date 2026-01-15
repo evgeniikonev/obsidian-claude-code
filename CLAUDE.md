@@ -94,3 +94,54 @@ manifest.json            # Obsidian plugin manifest
 
 ### Permission Model
 Tool calls требуют подтверждения пользователя через UI (edit review, command execution).
+
+## Development Workflow
+
+### Making Changes
+
+1. **Implement feature/fix** - write code
+2. **Build**: `npm run build`
+3. **Typecheck**: `npm run typecheck`
+4. **Ask user to test** - wait for user approval before release
+5. Only proceed to release after user confirms it works
+
+### Release Process
+
+**IMPORTANT**: Always use `npm run version` script, never edit version manually!
+
+```bash
+# 1. Bump version (choose one):
+npm run version patch   # 0.8.0 -> 0.8.1 (bug fixes)
+npm run version minor   # 0.8.0 -> 0.9.0 (new features)
+npm run version major   # 0.8.0 -> 1.0.0 (breaking changes)
+
+# 2. Build with new version:
+npm run build
+
+# 3. Commit changes:
+git add -A
+git commit -m "v0.9.0: Short description of changes"
+
+# 4. Tag and push:
+git tag v0.9.0
+git push origin main --tags
+```
+
+GitHub Actions will automatically create the release with `main.js`, `manifest.json`, `styles.css`.
+
+### Commit Message Format
+
+```
+vX.Y.Z: Short description
+
+- Detail 1
+- Detail 2
+```
+
+**IMPORTANT**: Do NOT add `Co-Authored-By` line to commits in this project!
+
+### Version Semantics
+
+- **patch** (0.0.X): Bug fixes, small improvements
+- **minor** (0.X.0): New features, backwards compatible
+- **major** (X.0.0): Breaking changes

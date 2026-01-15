@@ -453,7 +453,7 @@ Phase 8 (Advanced)
 ✅ **Phase 4 PARTIAL** — Agent UI components
 ✅ **Phase 5 PARTIAL** — Vault integration started
 
-**What works (v0.7.0):**
+**What works (v0.8.0):**
 - ACP connection to claude-code-acp
 - Basic chat with streaming
 - OAuth and API key authentication
@@ -467,12 +467,13 @@ Phase 8 (Advanced)
 - Clickable `[[file]]` links in messages
 - Click on `[[file]] (lines X-Y)` opens file and selects lines
 - Display `@N` markers as readable `[[file]] (lines)` format
+- **v0.8.0**: Clickable vault paths in tool cards (relative paths, click to open)
 
 **Next Steps (Priority Order):**
 
 ### HIGH PRIORITY
-1. **Convert agent paths to [[file]] links** — When agent mentions `/full/path/file.md`, display as clickable `[[file]]`
-2. **Diff Viewer (Phase 4.6)** — Full diff viewing for file edits with accept/reject
+1. ~~**Convert agent paths to [[file]] links**~~ ✅ Done in v0.8.0
+2. **Diff Viewer (Phase 4.6)** — Full diff viewing for file edits with accept/reject ◀── CURRENT
 
 ### MEDIUM PRIORITY
 3. **Settings Tab (Phase 6)** — Port config, hotkeys, UI preferences

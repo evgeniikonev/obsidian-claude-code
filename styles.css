@@ -1207,3 +1207,198 @@
   font-family: var(--font-monospace);
   font-size: 12px;
 }
+
+/* ===== Diff Modal ===== */
+
+.diff-modal {
+  max-width: 90vw;
+  width: 800px;
+}
+
+.diff-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.diff-modal-title {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 16px;
+  flex-grow: 1;
+}
+
+.diff-modal-path {
+  font-family: var(--font-monospace);
+}
+
+.diff-modal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.diff-modal-btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.diff-modal-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
+.diff-modal-stats {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  font-family: var(--font-monospace);
+}
+
+.diff-stat-add {
+  color: var(--text-success);
+  background: var(--background-modifier-success);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.diff-stat-remove {
+  color: var(--text-error);
+  background: var(--background-modifier-error);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.diff-modal-content {
+  max-height: 60vh;
+  overflow: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+/* Diff table */
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-monospace);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.diff-row {
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.diff-row:last-child {
+  border-bottom: none;
+}
+
+.diff-row-add {
+  background: rgba(0, 200, 80, 0.1);
+}
+
+.diff-row-remove {
+  background: rgba(255, 80, 80, 0.1);
+}
+
+.diff-row-context {
+  background: transparent;
+}
+
+.diff-line-num {
+  width: 40px;
+  min-width: 40px;
+  padding: 2px 8px;
+  text-align: right;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  border-right: 1px solid var(--background-modifier-border);
+  user-select: none;
+  vertical-align: top;
+}
+
+.diff-line-prefix {
+  width: 20px;
+  min-width: 20px;
+  padding: 2px 4px;
+  text-align: center;
+  font-weight: 600;
+  vertical-align: top;
+}
+
+.diff-row-add .diff-line-prefix {
+  color: var(--text-success);
+}
+
+.diff-row-remove .diff-line-prefix {
+  color: var(--text-error);
+}
+
+.diff-line-content {
+  padding: 2px 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.diff-line-content pre {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Inline diff viewer (tool cards) */
+.diff-viewer {
+  margin-top: 8px;
+}
+
+.diff-viewer-header {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.diff-viewer-content {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.diff-viewer-lines {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+}
+
+.diff-viewer-line {
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.diff-viewer-line:last-child {
+  border-bottom: none;
+}
+
+.diff-line-add {
+  background: rgba(0, 200, 80, 0.15);
+  color: var(--text-success);
+}
+
+.diff-line-remove {
+  background: rgba(255, 80, 80, 0.15);
+  color: var(--text-error);
+}
+
+.diff-line-context {
+  background: transparent;
+  color: var(--text-muted);
+}

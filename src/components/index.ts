@@ -11,7 +11,7 @@
 
 export { ThinkingBlock } from "./ThinkingBlock";
 export { ToolCallCard } from "./ToolCallCard";
-export { DiffViewer, createSimpleDiff } from "./DiffViewer";
+export { DiffViewer, DiffModal, createSimpleDiff } from "./DiffViewer";
 export { PermissionModal, showQuickPermission } from "./PermissionModal";
 export { PermissionCard } from "./PermissionCard";
 export { CodeViewerModal, collapseCodeBlocks } from "./CodeViewer";
