@@ -168,7 +168,29 @@ export default class ClaudeCodePlugin extends Plugin {
     try {
       this.chatView?.updateStatus("connecting");
       const vaultPath = (this.app.vault.adapter as any).basePath;
-      await this.acpClient?.connect(vaultPath);
+
+      // Get plugin directory for binary caching
+      const pluginDir = this.manifest.dir
+        ? `${vaultPath}/.obsidian/plugins/${this.manifest.id}`
+        : __dirname;
+
+      console.log(`[Plugin] Plugin directory: ${pluginDir}`);
+
+      // Connect with download progress callback
+      await this.acpClient?.connect(
+        vaultPath,
+        pluginDir,
+        undefined, // apiKey from env
+        (progress) => {
+          // Show download progress to user
+          if (progress.status === "downloading" || progress.status === "installing") {
+            new Notice(progress.message, 3000);
+            this.chatView?.updateStatus("connecting", progress.message);
+          } else if (progress.status === "error") {
+            new Notice(`Error: ${progress.message}`, 5000);
+          }
+        }
+      );
     } catch (error) {
       new Notice(`Failed to connect: ${(error as Error).message}`);
       this.chatView?.updateStatus("disconnected");

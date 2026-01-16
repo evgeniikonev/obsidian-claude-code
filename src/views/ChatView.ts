@@ -31,6 +31,22 @@ export class ChatView extends ItemView {
   // Tool calls state (track by ID for updates)
   private toolCallCards: Map<string, ToolCallCard> = new Map();
 
+  // Pending Edit tool calls by file path (for batching)
+  private pendingEditsByFile: Map<string, Array<{
+    toolCallId: string;
+    toolCall: acp.ToolCall;
+    card: ToolCallCard;
+  }>> = new Map();
+
+  // Pending permission requests by file (for batching)
+  private pendingPermissionsByFile: Map<string, Array<{
+    request: acp.RequestPermissionRequest;
+    resolve: (response: acp.RequestPermissionResponse) => void;
+  }>> = new Map();
+
+  // Auto-approved files: once user approves one edit, auto-approve rest for same file
+  private autoApprovedFiles: Map<string, acp.RequestPermissionResponse> = new Map();
+
   // Active permission cards (for cleanup)
   private activePermissionCards: PermissionCard[] = [];
 
@@ -174,6 +190,13 @@ export class ChatView extends ItemView {
 
     // Cleanup
     this.toolCallCards.clear();
+    this.pendingEditsByFile.clear();
+    this.pendingPermissionsByFile.clear();
+    this.autoApprovedFiles.clear();
+    for (const timer of this.permissionBatchTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.permissionBatchTimers.clear();
     this.currentThinkingBlock = null;
     this.currentStreamingEl = null;
   }
@@ -251,6 +274,13 @@ export class ChatView extends ItemView {
     this.currentStreamingEl = null;
     this.currentThinkingBlock = null;
     this.toolCallCards.clear();
+    this.pendingEditsByFile.clear();
+    this.pendingPermissionsByFile.clear();
+    this.autoApprovedFiles.clear();
+    for (const timer of this.permissionBatchTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.permissionBatchTimers.clear();
     this.pendingText = "";
     this.updateScheduled = false;
     this.needsParagraphBreak = false;
@@ -329,6 +359,24 @@ export class ChatView extends ItemView {
     });
 
     this.toolCallCards.set(toolCallId, card);
+
+    // Track Edit tool calls by file path for batching
+    console.log(`[ChatView] onToolCall kind: ${toolCall.kind}, locations:`, toolCall.locations, `content:`, toolCall.content);
+    if (toolCall.kind === "edit" && toolCall.locations && toolCall.locations.length > 0) {
+      const filePath = toolCall.locations[0].path;
+      if (filePath) {
+        if (!this.pendingEditsByFile.has(filePath)) {
+          this.pendingEditsByFile.set(filePath, []);
+        }
+        this.pendingEditsByFile.get(filePath)!.push({
+          toolCallId,
+          toolCall,
+          card,
+        });
+        console.log(`[ChatView] Tracking Edit for ${filePath}, total: ${this.pendingEditsByFile.get(filePath)!.length}`);
+      }
+    }
+
     this.scrollToBottom();
   }
 
@@ -337,6 +385,7 @@ export class ChatView extends ItemView {
    */
   onToolCallUpdate(update: acp.ToolCallUpdate & { sessionUpdate: "tool_call_update" }): void {
     const toolCallId = update.toolCallId ?? "";
+    console.log(`[ChatView] onToolCallUpdate:`, { toolCallId, status: update.status, content: update.content });
     const card = this.toolCallCards.get(toolCallId);
 
     if (card) {
@@ -345,7 +394,29 @@ export class ChatView extends ItemView {
       console.warn(`[ChatView] Tool call not found: ${toolCallId}`);
     }
 
+    // Remove completed Edit from pending tracking
+    if (update.status === "completed" || update.status === "failed") {
+      this.removeFromPendingEdits(toolCallId);
+    }
+
     this.scrollToBottom();
+  }
+
+  /**
+   * Remove a tool call from pending edits tracking
+   */
+  private removeFromPendingEdits(toolCallId: string): void {
+    for (const [filePath, edits] of this.pendingEditsByFile.entries()) {
+      const idx = edits.findIndex(e => e.toolCallId === toolCallId);
+      if (idx !== -1) {
+        edits.splice(idx, 1);
+        console.log(`[ChatView] Removed Edit ${toolCallId} from ${filePath}, remaining: ${edits.length}`);
+        if (edits.length === 0) {
+          this.pendingEditsByFile.delete(filePath);
+        }
+        break;
+      }
+    }
   }
 
   /**
@@ -383,19 +454,111 @@ export class ChatView extends ItemView {
     this.scrollToBottom();
   }
 
+  // Batch permission debounce timers by file
+  private permissionBatchTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+
   /**
-   * Handle permission request with inline card
+   * Handle permission request with auto-approve for same file
+   *
+   * Since ACP sends permission requests sequentially (waits for response before next),
+   * we use auto-approve: first approval for a file auto-approves subsequent edits.
    */
   async onPermissionRequest(request: acp.RequestPermissionRequest): Promise<acp.RequestPermissionResponse> {
-    // Create inline permission card
+    const toolCall = request.toolCall;
+
+    // Extract file path from locations or parse from title
+    let filePath = toolCall.locations?.[0]?.path;
+    let isEditPermission = toolCall.kind === "edit";
+
+    // Parse from title if not available in structured fields
+    // Title format: "Edit `/path/to/file`" or "Edit `path`"
+    if (!filePath && toolCall.title) {
+      const editMatch = toolCall.title.match(/^Edit\s+`([^`]+)`/);
+      if (editMatch) {
+        filePath = editMatch[1];
+        isEditPermission = true;
+      }
+    }
+
+    // Debug: log full toolCall structure
+    console.log(`[ChatView] Permission toolCall full:`, JSON.stringify(toolCall, null, 2));
+
+    // Check if this file was already approved in this session
+    if (isEditPermission && filePath && this.autoApprovedFiles.has(filePath)) {
+      const cachedResponse = this.autoApprovedFiles.get(filePath)!;
+      console.log(`[ChatView] Auto-approving edit for ${filePath}`);
+      return cachedResponse;
+    }
+
+    // Check if this is an Edit with multiple pending changes
+    const pendingEdits = filePath ? this.pendingEditsByFile.get(filePath) : undefined;
+    const totalChanges = pendingEdits?.length ?? 1;
+
+    if (isEditPermission && filePath && totalChanges > 1) {
+      return this.handleMultiEditPermission(request, filePath, totalChanges);
+    }
+
+    // Standard single permission flow
+    return this.handleSinglePermission(request);
+  }
+
+  /**
+   * Handle permission for file with multiple pending edits
+   * Shows "(1 of N)" and stores approval for auto-approve of rest
+   */
+  private async handleMultiEditPermission(
+    request: acp.RequestPermissionRequest,
+    filePath: string,
+    totalChanges: number
+  ): Promise<acp.RequestPermissionResponse> {
+    // Create a modified request that shows the count
+    const modifiedRequest: acp.RequestPermissionRequest = {
+      ...request,
+      toolCall: {
+        ...request.toolCall,
+        title: `Edit \`${filePath}\` (1 of ${totalChanges} changes)`,
+      },
+    };
+
+    console.log(`[ChatView] Showing permission for ${filePath}: 1 of ${totalChanges}`);
+
+    const card = new PermissionCard(this.messagesContainer, modifiedRequest);
+    this.activePermissionCards.push(card);
+    this.scrollToBottom();
+
+    const response = await card.waitForResponse();
+
+    const index = this.activePermissionCards.indexOf(card);
+    if (index > -1) {
+      this.activePermissionCards.splice(index, 1);
+    }
+
+    // Check if user approved (selected an "allow" option)
+    const selectedOptionId = response.outcome?.outcome === "selected" ? response.outcome.optionId : null;
+    const selectedOption = selectedOptionId
+      ? modifiedRequest.options.find(o => o.optionId === selectedOptionId)
+      : null;
+    const isApproved = selectedOption?.kind?.includes("allow") ?? false;
+
+    // If approved, store for auto-approve of subsequent edits
+    if (isApproved) {
+      console.log(`[ChatView] Storing auto-approve for ${filePath}`);
+      this.autoApprovedFiles.set(filePath, response);
+    }
+
+    return response;
+  }
+
+  /**
+   * Handle single permission request (non-edit or single edit)
+   */
+  private async handleSinglePermission(request: acp.RequestPermissionRequest): Promise<acp.RequestPermissionResponse> {
     const card = new PermissionCard(this.messagesContainer, request);
     this.activePermissionCards.push(card);
     this.scrollToBottom();
 
-    // Wait for user response
     const response = await card.waitForResponse();
 
-    // Remove from active cards
     const index = this.activePermissionCards.indexOf(card);
     if (index > -1) {
       this.activePermissionCards.splice(index, 1);
@@ -662,7 +825,7 @@ export class ChatView extends ItemView {
     modal.open();
   }
 
-  updateStatus(status: "disconnected" | "connecting" | "connected" | "thinking"): void {
+  updateStatus(status: "disconnected" | "connecting" | "connected" | "thinking", message?: string): void {
     this.statusIndicator.empty();
     this.statusIndicator.removeClass("status-disconnected", "status-connecting", "status-connected", "status-thinking");
     this.statusIndicator.addClass(`status-${status}`);
@@ -674,7 +837,8 @@ export class ChatView extends ItemView {
       thinking: "Thinking...",
     };
 
-    this.statusIndicator.setText(statusText[status]);
+    // Use custom message if provided, otherwise default
+    this.statusIndicator.setText(message || statusText[status]);
   }
 
   // ===== Selection Methods (Cmd+L) =====

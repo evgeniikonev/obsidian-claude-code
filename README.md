@@ -1,140 +1,162 @@
-# Obsidian Claude Code Plugin
+# Claude Code for Obsidian
 
-Use [Claude Code](https://claude.ai/code) directly inside Obsidian via the [Agent Client Protocol (ACP)](https://agentclientprotocol.com/).
+Use **Claude Code** — Anthropic's AI coding assistant — directly inside Obsidian.
 
-This is not just a chat with an API — it's a full agentic workflow with tool calls, permission requests, and file operations, similar to the Claude Code integration in Zed or Cursor.
+This plugin brings the full Claude Code agent experience to your vault: not just a simple chat, but a complete agentic workflow with file operations, tool calls, and intelligent code assistance.
+
+![Claude Code in Obsidian](https://img.shields.io/badge/Obsidian-Claude%20Code-7C3AED?style=for-the-badge)
 
 ## Features
 
-- **Full Claude Code Agent** — Complete Claude Code experience inside Obsidian
-- **ACP Protocol** — Uses the official Agent Client Protocol for communication
-- **Streaming Responses** — Real-time message streaming with markdown rendering
-- **Tool Calls** — Support for tool execution with permission requests
-- **Vault Integration** — Works with your Obsidian vault as the working directory
+- **Full Claude Code Agent** — The same powerful AI assistant used in VS Code, Cursor, and Zed
+- **File Operations** — Claude can read, write, and edit files in your vault with your permission
+- **Tool Execution** — Supports bash commands, file search, and other tools
+- **Permission System** — You control what Claude can do with intuitive Allow/Deny prompts
+- **Streaming Responses** — Real-time message display with markdown rendering
+- **Code Selection** — Select code and send it to Claude with `Cmd+Shift+.`
+- **Diff Viewer** — Review file changes before applying them
 
-## Prerequisites
+## Requirements
 
-1. **claude-code-acp** — Install the ACP adapter globally:
-   ```bash
-   npm install -g @zed-industries/claude-code-acp
-   ```
-
-2. **ANTHROPIC_API_KEY** — Set your API key in environment:
-   ```bash
-   export ANTHROPIC_API_KEY=sk-ant-...
-   ```
+- **Obsidian** 1.5.0 or later (Desktop only)
+- **Node.js** 18+ (for automatic binary download on first run)
+- **Anthropic API Key** — Get one at [console.anthropic.com](https://console.anthropic.com/)
 
 ## Installation
 
-### From Release (Recommended)
+### From GitHub Releases (Recommended)
 
-1. Download `main.js`, `manifest.json`, and `styles.css` from the latest release
-2. Create folder: `YOUR_VAULT/.obsidian/plugins/obsidian-claude-code/`
-3. Copy the downloaded files into this folder
-4. Enable the plugin in Obsidian Settings → Community Plugins
+1. Go to the [Releases](https://github.com/anthropics/obsidian-claude-code/releases) page
+2. Download the latest release (`obsidian-claude-code-X.Y.Z.zip`)
+3. Extract to your vault: `YOUR_VAULT/.obsidian/plugins/obsidian-claude-code/`
+4. In Obsidian: Settings → Community Plugins → Enable "Claude Code"
 
-### From Source
+### Manual Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/obsidian-claude-code-plugin
-cd obsidian-claude-code-plugin
+# Clone the repository
+git clone https://github.com/anthropics/obsidian-claude-code
+cd obsidian-claude-code
+
+# Install dependencies and build
 npm install
 npm run build
 
-# Copy to your vault
+# Copy to your vault's plugins folder
+mkdir -p YOUR_VAULT/.obsidian/plugins/obsidian-claude-code
 cp main.js manifest.json styles.css YOUR_VAULT/.obsidian/plugins/obsidian-claude-code/
 ```
 
+## Setup
+
+### 1. Set Your API Key
+
+Set the `ANTHROPIC_API_KEY` environment variable before launching Obsidian:
+
+**macOS/Linux:**
+```bash
+export ANTHROPIC_API_KEY=sk-ant-api03-...
+open /Applications/Obsidian.app
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-api03-..."
+& "C:\Users\YOU\AppData\Local\Obsidian\Obsidian.exe"
+```
+
+> **Tip:** Add the export to your shell profile (`~/.zshrc`, `~/.bashrc`) for persistence.
+
+### 2. First Run
+
+1. Click the **bot icon** in the left ribbon to open the Claude Code panel
+2. Click the **plug icon** (⚡) in the chat header to connect
+3. On first connection, the plugin will automatically download the required components (~30 seconds)
+4. Start chatting!
+
 ## Usage
 
-1. Click the **bot icon** in the ribbon (left sidebar) to open Claude Code chat
-2. Click the **plug icon** in the chat header to connect
-3. Start chatting!
+### Basic Chat
+
+Just type your message and press Enter or click Send. Claude will respond with helpful answers, code suggestions, and can perform actions in your vault.
+
+### Code Selection
+
+1. Select text in any file
+2. Press `Cmd+Shift+.` (or `Ctrl+Shift+.` on Windows)
+3. The selection appears as a chip in the chat input
+4. Ask Claude about it!
 
 ### Commands
 
-Open Command Palette (`Cmd/Ctrl + P`) and search for:
+Open Command Palette (`Cmd/Ctrl + P`):
 
-- **Claude Code: Open Chat** — Open the chat panel
-- **Claude Code: Connect** — Connect to claude-code-acp
-- **Claude Code: Disconnect** — Disconnect from the agent
+| Command | Description |
+|---------|-------------|
+| Claude Code: Open Chat | Open the chat panel |
+| Claude Code: Connect | Connect to Claude |
+| Claude Code: Disconnect | Disconnect from Claude |
+| Claude Code: Add Selection to Chat | Add selected text to chat |
 
-## Architecture
+### Permissions
 
+When Claude wants to perform actions (edit files, run commands), you'll see a permission prompt:
+
+- **Allow** — Permit this specific action
+- **Allow All** — Permit all similar actions this session
+- **Deny** — Reject this action
+
+## Troubleshooting
+
+### "Failed to find or download claude-code-acp binary"
+
+Make sure Node.js and npm are installed and accessible:
+```bash
+node --version  # Should be 18+
+npm --version
 ```
-┌─────────────────────────────────────────┐
-│              Obsidian                   │
-│  ┌───────────────────────────────────┐  │
-│  │   obsidian-claude-code-plugin     │  │
-│  │          (ACP Client)             │  │
-│  │  ┌─────────┐  ┌────────────────┐  │  │
-│  │  │ ChatView│  │ AcpClient      │  │  │
-│  │  └─────────┘  └───────┬────────┘  │  │
-│  └───────────────────────│───────────┘  │
-└──────────────────────────│──────────────┘
-                           │ JSON-RPC/stdio
-                           ▼
-┌──────────────────────────────────────────┐
-│            claude-code-acp               │
-│      (ACP Server / Claude Agent)         │
-└──────────────────────────────────────────┘
+
+### Connection Issues
+
+1. Check that your `ANTHROPIC_API_KEY` is set correctly
+2. Restart Obsidian after setting the environment variable
+3. Check the Developer Console (`Cmd+Option+I`) for error messages
+
+### Binary Location
+
+The plugin stores the Claude Code ACP binary in:
 ```
+YOUR_VAULT/.obsidian/plugins/obsidian-claude-code/bin/
+```
+
+You can delete this folder to force a fresh download.
+
+## Privacy & Security
+
+- Your API key is only used to communicate with Anthropic's API
+- All file operations require your explicit permission
+- The plugin works entirely locally — no data is sent to third parties
+- See [Anthropic's Privacy Policy](https://www.anthropic.com/privacy) for API usage
 
 ## Development
 
 ```bash
-# Install dependencies
-npm install
-
-# Build for production
-npm run build
-
-# Development mode (watch)
+# Development mode with hot reload
 npm run dev
 
-# Type check
+# Type checking
 npm run typecheck
 
-# Run headless ACP test (no Obsidian needed)
-npm run test:headless
+# Production build
+npm run build
 ```
-
-## Releasing
-
-Version bump and release:
-
-```bash
-# Bump version (patch/minor/major)
-npm run version patch
-
-# Commit and tag
-git add package.json manifest.json
-git commit -m "Bump version to X.Y.Z"
-git tag X.Y.Z
-git push && git push --tags
-```
-
-GitHub Actions will automatically build and create a release with the plugin files.
-
-## Roadmap
-
-- [x] Phase 1: Project structure
-- [x] Phase 2: ACP connection
-- [x] Phase 3: Basic Chat UI
-- [x] Phase 7: GitHub Actions release
-- [ ] Phase 4: Tool calls & permission UI
-- [ ] Phase 5: Vault integration (@-mentions)
-- [ ] Phase 6: Settings
-- [ ] Phase 8: Advanced features (MCP, slash commands)
-
-See [PLAN.md](./PLAN.md) for detailed implementation plan.
-
-## Related Projects
-
-- [claude-code-acp](https://github.com/zed-industries/claude-code-acp) — ACP adapter for Claude Code
-- [Agent Client Protocol](https://agentclientprotocol.com/) — Protocol specification
-- [@agentclientprotocol/sdk](https://github.com/agentclientprotocol/typescript-sdk) — TypeScript SDK
 
 ## License
 
 [MIT](./LICENSE)
+
+## Links
+
+- [Claude Code](https://claude.ai/code) — Official Claude Code
+- [Anthropic](https://anthropic.com) — The company behind Claude
+- [Agent Client Protocol](https://agentclientprotocol.com/) — The protocol powering this integration

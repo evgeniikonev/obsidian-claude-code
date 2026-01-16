@@ -1,43 +1,13 @@
 import { spawn, ChildProcess } from "node:child_process";
 import { Writable, Readable } from "node:stream";
 import { existsSync, promises as fs } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import * as acp from "@agentclientprotocol/sdk";
-
-// Find claude-code-acp binary in common locations
-// Electron/Obsidian doesn't inherit shell PATH, so we need to search manually
-function findClaudeCodeAcp(): string {
-  const binaryName = process.platform === "win32" ? "claude-code-acp.cmd" : "claude-code-acp";
-
-  const searchPaths = [
-    // macOS Homebrew
-    "/opt/homebrew/bin",
-    "/usr/local/bin",
-    // Linux
-    "/usr/bin",
-    "/usr/local/bin",
-    // npm global (macOS/Linux)
-    join(homedir(), ".npm-global", "bin"),
-    join(homedir(), ".nvm", "versions", "node"),
-    // npm global (Windows)
-    join(homedir(), "AppData", "Roaming", "npm"),
-    // pnpm
-    join(homedir(), ".local", "share", "pnpm"),
-    // Volta
-    join(homedir(), ".volta", "bin"),
-  ];
-
-  for (const dir of searchPaths) {
-    const fullPath = join(dir, binaryName);
-    if (existsSync(fullPath)) {
-      return fullPath;
-    }
-  }
-
-  // Fallback: try PATH anyway (might work in some cases)
-  return binaryName;
-}
+import {
+  ensureBinaryAvailable,
+  getSpawnArgs,
+  DownloadProgress,
+  ProgressCallback,
+} from "./binaryManager";
 
 /**
  * Extended event interface for Phase 4.1 components
@@ -176,11 +146,24 @@ export class ObsidianAcpClient implements acp.Client {
     }
   }
 
-  async connect(workingDirectory: string, apiKey?: string): Promise<void> {
+  async connect(
+    workingDirectory: string,
+    pluginDir: string,
+    apiKey?: string,
+    onDownloadProgress?: ProgressCallback
+  ): Promise<void> {
     try {
-      // Find claude-code-acp binary
-      const acpPath = findClaudeCodeAcp();
-      console.log(`[ACP] Using binary: ${acpPath}`);
+      // Find or download claude-code-acp binary using BinaryManager
+      console.log(`[ACP] Ensuring binary available, plugin dir: ${pluginDir}`);
+      const binaryInfo = await ensureBinaryAvailable(pluginDir, onDownloadProgress);
+
+      if (!binaryInfo) {
+        throw new Error("Failed to find or download claude-code-acp binary. Please install Node.js and npm.");
+      }
+
+      const spawnArgs = getSpawnArgs(binaryInfo);
+      console.log(`[ACP] Using binary: ${binaryInfo.path} (${binaryInfo.type})`);
+      console.log(`[ACP] Spawn command: ${spawnArgs.command} ${spawnArgs.args.join(" ")}`);
 
       // Check for API key
       const anthropicKey = apiKey || process.env.ANTHROPIC_API_KEY;
@@ -191,7 +174,7 @@ export class ObsidianAcpClient implements acp.Client {
       }
 
       // Spawn claude-code-acp process
-      this.process = spawn(acpPath, [], {
+      this.process = spawn(spawnArgs.command, spawnArgs.args, {
         stdio: ["pipe", "pipe", "pipe"], // capture stderr too
         cwd: workingDirectory,
         env: {
