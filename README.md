@@ -4,7 +4,7 @@ Use **Claude Code** — Anthropic's AI coding assistant — directly inside Obsi
 
 This plugin brings the full Claude Code agent experience to your vault: not just a simple chat, but a complete agentic workflow with file operations, tool calls, and intelligent code assistance.
 
-![Claude Code in Obsidian](https://img.shields.io/badge/Obsidian-Claude%20Code-7C3AED?style=for-the-badge)
+[![Install in Obsidian](https://img.shields.io/badge/Install%20in-Obsidian-7C3AED?style=for-the-badge&logo=obsidian)](https://github.com/evgeniikonev/obsidian-claude-code/releases/latest)
 
 ## Features
 
@@ -18,24 +18,33 @@ This plugin brings the full Claude Code agent experience to your vault: not just
 
 ## Requirements
 
-- **Obsidian** 1.5.0 or later (Desktop only)
-- **Node.js** 18+ (for automatic binary download on first run)
-- **Anthropic API Key** — Get one at [console.anthropic.com](https://console.anthropic.com/)
+| Requirement | Description | Installation |
+|-------------|-------------|--------------|
+| **Claude Code** | Main requirement — must be installed and working | [Install Claude Code](https://claude.ai/code) |
+| **Obsidian** | Version 1.5.0+ (Desktop only) | [Download Obsidian](https://obsidian.md/download) |
+| **Node.js** | Version 18+ (for automatic component download) | [Download Node.js](https://nodejs.org/) |
+
+### Authentication
+
+You need **one** of the following:
+- **Claude Pro/Team subscription** — Claude Code uses your subscription automatically
+- **Anthropic API Key** — Get one at [console.anthropic.com](https://console.anthropic.com/) if you don't have a subscription
+
+> **Note:** If you already use Claude Code in your terminal and it works, you're all set!
 
 ## Installation
 
 ### From GitHub Releases (Recommended)
 
-1. Go to the [Releases](https://github.com/anthropics/obsidian-claude-code/releases) page
-2. Download the latest release (`obsidian-claude-code-X.Y.Z.zip`)
-3. Extract to your vault: `YOUR_VAULT/.obsidian/plugins/obsidian-claude-code/`
-4. In Obsidian: Settings → Community Plugins → Enable "Claude Code"
+1. Download the [latest release](https://github.com/evgeniikonev/obsidian-claude-code/releases/latest)
+2. Extract the archive to: `YOUR_VAULT/.obsidian/plugins/obsidian-claude-code/`
+3. In Obsidian: Settings → Community Plugins → Enable "Claude Code"
 
-### Manual Installation
+### From Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/anthropics/obsidian-claude-code
+git clone https://github.com/evgeniikonev/obsidian-claude-code
 cd obsidian-claude-code
 
 # Install dependencies and build
@@ -49,25 +58,41 @@ cp main.js manifest.json styles.css YOUR_VAULT/.obsidian/plugins/obsidian-claude
 
 ## Setup
 
-### 1. Set Your API Key
+### 1. Verify Claude Code Works
 
-Set the `ANTHROPIC_API_KEY` environment variable before launching Obsidian:
+Before using this plugin, make sure Claude Code works in your terminal:
 
-**macOS/Linux:**
+```bash
+claude "Hello, Claude!"
+```
+
+If this works, you're ready to go! The plugin will use the same authentication.
+
+### 2. API Key (Optional)
+
+If you're using an API key instead of a subscription, set it before launching Obsidian:
+
+<details>
+<summary><b>macOS/Linux</b></summary>
+
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-api03-...
 open /Applications/Obsidian.app
 ```
 
-**Windows (PowerShell):**
+Add to `~/.zshrc` or `~/.bashrc` for persistence.
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
 ```powershell
 $env:ANTHROPIC_API_KEY = "sk-ant-api03-..."
 & "C:\Users\YOU\AppData\Local\Obsidian\Obsidian.exe"
 ```
+</details>
 
-> **Tip:** Add the export to your shell profile (`~/.zshrc`, `~/.bashrc`) for persistence.
-
-### 2. First Run
+### 3. First Run
 
 1. Click the **bot icon** in the left ribbon to open the Claude Code panel
 2. Click the **plug icon** (⚡) in the chat header to connect
