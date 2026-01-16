@@ -109,6 +109,10 @@ Tool calls требуют подтверждения пользователя ч
 
 **IMPORTANT**: Always use `npm run version` script, never edit version manually!
 
+**IMPORTANT**: Tags must be WITHOUT 'v' prefix (Obsidian requirement)!
+- ✅ Correct: `1.0.0`
+- ❌ Wrong: `v1.0.0`
+
 ```bash
 # 1. Bump version (choose one):
 npm run version patch   # 0.8.0 -> 0.8.1 (bug fixes)
@@ -120,10 +124,10 @@ npm run build
 
 # 3. Commit changes:
 git add -A
-git commit -m "v0.9.0: Short description of changes"
+git commit -m "1.0.0: Short description of changes"
 
-# 4. Tag and push:
-git tag v0.9.0
+# 4. Tag and push (NO 'v' prefix!):
+git tag 1.0.0
 git push origin main --tags
 ```
 
@@ -132,7 +136,7 @@ GitHub Actions will automatically create the release with `main.js`, `manifest.j
 ### Commit Message Format
 
 ```
-vX.Y.Z: Short description
+X.Y.Z: Short description
 
 - Detail 1
 - Detail 2

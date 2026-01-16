@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "minAppVersion": "1.5.0",
   "description": "Claude Code integration for Obsidian via ACP (Agent Client Protocol)",
-  "author": "Your Name",
-  "authorUrl": "",
+  "author": "Evgenii Konev",
+  "authorUrl": "https://github.com/evgeniikonev",
   "isDesktopOnly": true
 }
