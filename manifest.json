@@ -1,9 +1,9 @@
 {
-  "id": "claude-code",
-  "name": "Claude Code",
-  "version": "1.0.1",
+  "id": "claude-code-integration",
+  "name": "Claude Code Integration",
+  "version": "1.0.2",
   "minAppVersion": "1.5.0",
-  "description": "Full Claude Code AI assistant with file operations, tool execution, and permission controls via ACP.",
+  "description": "Integrate Claude Code AI assistant into your vault with file operations, tool execution, and permission controls via ACP.",
   "author": "Evgenii Konev",
   "authorUrl": "https://github.com/evgeniikonev",
   "isDesktopOnly": true

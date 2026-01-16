@@ -1,8 +1,10 @@
-# Claude Code for Obsidian
+# Claude Code Integration for Obsidian
 
 Use **Claude Code** — Anthropic's AI coding assistant — directly inside Obsidian.
 
-This plugin brings the full Claude Code agent experience to your vault: not just a simple chat, but a complete agentic workflow with file operations, tool calls, and intelligent code assistance.
+This plugin integrates the full Claude Code agent experience into your vault: not just a simple chat, but a complete agentic workflow with file operations, tool calls, and intelligent code assistance.
+
+> **Note:** This is a third-party integration, not an official Anthropic product.
 
 [![Install in Obsidian](https://img.shields.io/badge/Install%20in-Obsidian-7C3AED?style=for-the-badge&logo=obsidian)](https://github.com/evgeniikonev/obsidian-claude-code/releases/latest)
 
@@ -38,7 +40,7 @@ You need **one** of the following:
 
 1. Download the [latest release](https://github.com/evgeniikonev/obsidian-claude-code/releases/latest)
 2. Extract the archive to: `YOUR_VAULT/.obsidian/plugins/obsidian-claude-code/`
-3. In Obsidian: Settings → Community Plugins → Enable "Claude Code"
+3. In Obsidian: Settings → Community Plugins → Enable "Claude Code Integration"
 
 ### From Source
 
@@ -94,7 +96,7 @@ $env:ANTHROPIC_API_KEY = "sk-ant-api03-..."
 
 ### 3. First Run
 
-1. Click the **bot icon** in the left ribbon to open the Claude Code panel
+1. Click the **bot icon** in the left ribbon to open the Claude Code Integration panel
 2. Click the **plug icon** (⚡) in the chat header to connect
 3. On first connection, the plugin will automatically download the required components (~30 seconds)
 4. Start chatting!
@@ -118,10 +120,10 @@ Open Command Palette (`Cmd/Ctrl + P`):
 
 | Command | Description |
 |---------|-------------|
-| Claude Code: Open Chat | Open the chat panel |
-| Claude Code: Connect | Connect to Claude |
-| Claude Code: Disconnect | Disconnect from Claude |
-| Claude Code: Add Selection to Chat | Add selected text to chat |
+| Claude Code Integration: Open Chat | Open the chat panel |
+| Claude Code Integration: Connect | Connect to Claude |
+| Claude Code Integration: Disconnect | Disconnect from Claude |
+| Claude Code Integration: Add Selection to Chat | Add selected text to chat |
 
 ### Permissions
 

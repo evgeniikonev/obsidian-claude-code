@@ -1,7 +1,7 @@
 {
-  "name": "obsidian-claude-code",
-  "version": "1.0.1",
-  "description": "Claude Code integration for Obsidian via ACP (Agent Client Protocol)",
+  "name": "obsidian-claude-code-integration",
+  "version": "1.0.2",
+  "description": "Claude Code Integration for Obsidian via ACP (Agent Client Protocol)",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",

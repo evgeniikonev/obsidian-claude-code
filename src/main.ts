@@ -7,7 +7,7 @@ export default class ClaudeCodePlugin extends Plugin {
   private chatView: ChatView | null = null;
 
   async onload() {
-    console.log("Loading Claude Code plugin");
+    console.log("Loading Claude Code Integration plugin");
 
     // Register chat view
     this.registerView(CHAT_VIEW_TYPE, (leaf) => {
@@ -62,17 +62,17 @@ export default class ClaudeCodePlugin extends Plugin {
       // Connection lifecycle
       onError: (error) => {
         console.error("[ACP Error]", error);
-        new Notice(`Claude Code Error: ${error.message}`);
+        new Notice(`Claude Code Integration: ${error.message}`);
         this.chatView?.updateStatus("disconnected");
       },
       onConnected: () => {
         console.log("[ACP] Connected");
-        new Notice("Claude Code: Connected");
+        new Notice("Claude Code Integration: Connected");
         this.chatView?.updateStatus("connected");
       },
       onDisconnected: () => {
         console.log("[ACP] Disconnected");
-        new Notice("Claude Code: Disconnected");
+        new Notice("Claude Code Integration: Disconnected");
         this.chatView?.updateStatus("disconnected");
       },
 
