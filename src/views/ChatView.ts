@@ -4,6 +4,15 @@ import type * as acp from "@agentclientprotocol/sdk";
 import { TFile } from "obsidian";
 import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks, FileSuggest, resolveFileReferences, SelectionChipsContainer, formatAgentPaths, DiffModal } from "../components";
 
+/**
+ * Set CSS custom properties on an element
+ */
+function setCssProps(el: HTMLElement, props: Record<string, string>): void {
+  for (const [key, value] of Object.entries(props)) {
+    el.style.setProperty(key, value);
+  }
+}
+
 export const CHAT_VIEW_TYPE = "claude-code-chat";
 
 interface Message {
@@ -135,14 +144,14 @@ export class ChatView extends ItemView {
           return;
         }
         e.preventDefault();
-        this.handleSend();
+        void this.handleSend();
       }
     });
 
     // Auto-resize textarea and sync chips
     this.textarea.addEventListener("input", () => {
-      this.textarea.style.height = "auto";
-      this.textarea.style.height = Math.min(this.textarea.scrollHeight, 200) + "px";
+      setCssProps(this.textarea, { "--chat-input-height": "auto" });
+      setCssProps(this.textarea, { "--chat-input-height": Math.min(this.textarea.scrollHeight, 200) + "px" });
 
       // Sync chips with text - remove orphaned chips
       this.syncChipsWithText();
@@ -239,7 +248,7 @@ export class ChatView extends ItemView {
 
     // Clear input and selection chips
     this.textarea.value = "";
-    this.textarea.style.height = "auto";
+    setCssProps(this.textarea, { "--chat-input-height": "auto" });
 
     // Reset streaming state
     this.resetStreamingState();
@@ -892,8 +901,8 @@ export class ChatView extends ItemView {
       .trim();
 
     // Trigger resize (but don't re-sync to avoid loop)
-    this.textarea.style.height = "auto";
-    this.textarea.style.height = Math.min(this.textarea.scrollHeight, 200) + "px";
+    setCssProps(this.textarea, { "--chat-input-height": "auto" });
+    setCssProps(this.textarea, { "--chat-input-height": Math.min(this.textarea.scrollHeight, 200) + "px" });
   }
 
   /**

@@ -7,6 +7,15 @@
 
 import { App, TFolder, TAbstractFile, prepareFuzzySearch, SearchResult } from "obsidian";
 
+/**
+ * Set CSS custom properties on an element
+ */
+function setCssProps(el: HTMLElement, props: Record<string, string>): void {
+  for (const [key, value] of Object.entries(props)) {
+    el.style.setProperty(key, value);
+  }
+}
+
 interface SuggestItem {
   file: TAbstractFile;
   path: string;
@@ -293,13 +302,13 @@ export class FileSuggest {
   private positionDropdown(): void {
     if (!this.dropdown) return;
 
-    // Position above the input
+    // Position above the input using CSS custom properties
     const inputRect = this.inputEl.getBoundingClientRect();
     const containerRect = this.container.getBoundingClientRect();
 
-    this.dropdown.style.bottom = `${containerRect.bottom - inputRect.top + 4}px`;
-    this.dropdown.style.left = "16px";
-    this.dropdown.style.right = "16px";
+    setCssProps(this.dropdown, {
+      "--dropdown-bottom": `${containerRect.bottom - inputRect.top + 4}px`
+    });
   }
 
   /**

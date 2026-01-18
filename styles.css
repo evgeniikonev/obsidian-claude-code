@@ -12,8 +12,9 @@
 
 /* Dropdown positioning via CSS custom properties */
 .file-suggest-dropdown {
-  left: var(--dropdown-left, 16px);
-  right: var(--dropdown-right, 16px);
+  bottom: var(--dropdown-bottom, auto);
+  left: 16px;
+  right: 16px;
 }
 
 .claude-code-chat {
