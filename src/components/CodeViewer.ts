@@ -7,8 +7,9 @@
 
 import { App, Modal } from "obsidian";
 
-const MAX_PREVIEW_LINES = 3;
-const MAX_PREVIEW_CHARS = 200;
+// Only collapse really long code blocks - short ones are important context
+const MAX_PREVIEW_LINES = 25;
+const MAX_PREVIEW_CHARS = 2000;
 
 /**
  * Modal for viewing full code/output content
