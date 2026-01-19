@@ -7,10 +7,12 @@
  * - package.json
  * - manifest.json
  *
+ * Runs lint and typecheck before bumping.
  * Then run: git tag <version> && git push --tags
  */
 
 import { readFileSync, writeFileSync } from 'fs';
+import { execSync } from 'child_process';
 
 const bumpType = process.argv[2];
 
@@ -21,6 +23,26 @@ if (!['major', 'minor', 'patch'].includes(bumpType)) {
   console.log('  node version.mjs patch   # 0.1.0 -> 0.1.1');
   console.log('  node version.mjs minor   # 0.1.0 -> 0.2.0');
   console.log('  node version.mjs major   # 0.1.0 -> 1.0.0');
+  process.exit(1);
+}
+
+// Run lint and typecheck before bumping
+console.log('Running pre-release checks...');
+console.log('');
+
+try {
+  console.log('→ Running lint...');
+  execSync('npm run lint', { stdio: 'inherit' });
+  console.log('✓ Lint passed');
+  console.log('');
+
+  console.log('→ Running typecheck...');
+  execSync('npm run typecheck', { stdio: 'inherit' });
+  console.log('✓ Typecheck passed');
+  console.log('');
+} catch (error) {
+  console.error('');
+  console.error('❌ Pre-release checks failed. Fix the issues before releasing.');
   process.exit(1);
 }
 

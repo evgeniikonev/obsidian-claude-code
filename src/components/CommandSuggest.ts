@@ -242,7 +242,7 @@ export class CommandSuggest {
       if (item.isBuiltin) {
         const badgeEl = document.createElement("span");
         badgeEl.className = "command-suggest-badge";
-        badgeEl.textContent = "builtin";
+        badgeEl.textContent = "Built-in";
         itemEl.appendChild(badgeEl);
       }
 
