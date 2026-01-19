@@ -86,6 +86,12 @@ export default class ClaudeCodePlugin extends Plugin {
         this.getChatView()?.updateStatus("disconnected");
       },
 
+      // Slash commands update
+      onAvailableCommandsUpdate: (commands) => {
+        console.debug(`[Commands] ${commands.length} commands available`);
+        this.getChatView()?.updateAvailableCommands(commands);
+      },
+
       // Legacy fallback (optional)
       onMessage: (text) => {
         // Used for backward compatibility if needed
@@ -228,5 +234,33 @@ export default class ClaudeCodePlugin extends Plugin {
 
   isConnected(): boolean {
     return this.acpClient?.isConnected() ?? false;
+  }
+
+  getAvailableCommands(): import("./acpClient").AvailableCommand[] {
+    return this.acpClient?.getAvailableCommands() ?? [];
+  }
+
+  getSessionId(): string | null {
+    return this.acpClient?.getSessionId() ?? null;
+  }
+
+  getCurrentMode(): { modeId: string } | null {
+    return this.acpClient?.getCurrentMode() ?? null;
+  }
+
+  getAvailableModes(): Array<{ id: string; name: string; description?: string }> {
+    return this.acpClient?.getAvailableModes() ?? [];
+  }
+
+  getCurrentModel(): { modeId?: string; id?: string } | null {
+    return this.acpClient?.getCurrentModel() ?? null;
+  }
+
+  getAvailableModels(): Array<{ id: string; name: string; description?: string }> {
+    return this.acpClient?.getAvailableModels() ?? [];
+  }
+
+  getConfigOptions(): Array<{ id: string; name: string; currentValue?: string; category?: string }> {
+    return this.acpClient?.getConfigOptions() ?? [];
   }
 }

@@ -1143,6 +1143,98 @@
   color: inherit;
 }
 
+/* ===== Command Suggest (Slash Commands) ===== */
+
+.command-suggest-dropdown {
+  position: absolute;
+  bottom: var(--dropdown-bottom, auto);
+  left: 16px;
+  right: 16px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-s);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+/* Compact single-line item layout */
+.command-suggest-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--background-modifier-border-hover);
+}
+
+.command-suggest-item:last-child {
+  border-bottom: none;
+}
+
+.command-suggest-item:hover,
+.command-suggest-item.is-selected {
+  background: var(--background-modifier-hover);
+}
+
+.command-suggest-item.is-selected {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.command-suggest-name {
+  font-weight: 600;
+  font-size: 12px;
+  font-family: var(--font-monospace);
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.command-suggest-badge {
+  font-size: 9px;
+  padding: 1px 4px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.command-suggest-item.is-selected .command-suggest-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+}
+
+.command-suggest-description {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.command-suggest-item.is-selected .command-suggest-description {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.command-suggest-hint {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-style: italic;
+  flex-shrink: 0;
+}
+
+.command-suggest-item.is-selected .command-suggest-hint {
+  color: inherit;
+  opacity: 0.7;
+}
+
 /* ===== Selection Chips (Cmd+L) ===== */
 
 .selection-chips-container {

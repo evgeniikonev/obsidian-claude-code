@@ -194,6 +194,9 @@ export class ZedAcpAdapter implements IAcpClient {
         },
       });
 
+      // Debug: log initialization result
+      console.debug("[ZedAdapter] Init result:", JSON.stringify(this.initResult, null, 2));
+
       // Create session
       // Convert MCP servers config to ACP format
       const mcpServers: acp.McpServer[] = (sessionConfig.mcpServers ?? []).map((s) => ({
@@ -208,6 +211,9 @@ export class ZedAcpAdapter implements IAcpClient {
         cwd: sessionConfig.cwd,
         mcpServers,
       });
+
+      // Debug: log full session result
+      console.debug("[ZedAdapter] Session result:", JSON.stringify(sessionResult, null, 2));
 
       // Store session mode info if available
       if (sessionResult.modes) {
@@ -626,6 +632,9 @@ export class ZedAcpAdapter implements IAcpClient {
 
   private async handleSessionUpdate(params: acp.SessionNotification): Promise<void> {
     const update = params.update;
+
+    // Debug: log all session updates
+    console.debug("[ZedAdapter] Session update:", update.sessionUpdate, JSON.stringify(update, null, 2));
 
     switch (update.sessionUpdate) {
       case "agent_message_chunk":

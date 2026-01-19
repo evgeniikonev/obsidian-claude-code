@@ -16,7 +16,7 @@ import type {
   PermissionResponseParams,
 } from "../acpClient";
 import { TFile } from "obsidian";
-import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks, FileSuggest, resolveFileReferences, SelectionChipsContainer, formatAgentPaths, DiffModal } from "../components";
+import { ThinkingBlock, ToolCallCard, PermissionCard, collapseCodeBlocks, FileSuggest, CommandSuggest, resolveFileReferences, SelectionChipsContainer, formatAgentPaths, DiffModal } from "../components";
 
 /**
  * Set CSS custom properties on an element
@@ -82,6 +82,9 @@ export class ChatView extends ItemView {
 
   // File suggestion for [[ syntax
   private fileSuggest: FileSuggest | null = null;
+
+  // Command suggestion for / syntax
+  private commandSuggest: CommandSuggest | null = null;
 
   // Selection chips for Cmd+L
   private selectionChips: SelectionChipsContainer | null = null;
@@ -153,8 +156,8 @@ export class ChatView extends ItemView {
 
     this.textarea.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
-        // Don't send if file suggest is open (let it handle Enter)
-        if (this.fileSuggest?.isSuggestOpen()) {
+        // Don't send if suggest dropdown is open (let it handle Enter)
+        if (this.fileSuggest?.isSuggestOpen() || this.commandSuggest?.isSuggestOpen()) {
           return;
         }
         e.preventDefault();
@@ -186,6 +189,24 @@ export class ChatView extends ItemView {
       }
     );
 
+    // Command suggestion for / syntax (slash commands)
+    this.commandSuggest = new CommandSuggest(
+      this.inputContainer,
+      this.textarea,
+      (command) => {
+        console.debug(`[CommandSuggest] Selected ACP command: ${command.name}`);
+      },
+      (command) => {
+        this.handleBuiltinCommand(command);
+      }
+    );
+
+    // Initialize commands from plugin if already connected
+    const commands = this.plugin.getAvailableCommands();
+    if (commands.length > 0) {
+      this.commandSuggest.setCommands(commands);
+    }
+
     // Setup drag & drop for files
     this.setupDropZone(inputRow);
 
@@ -208,6 +229,10 @@ export class ChatView extends ItemView {
     // Cleanup FileSuggest
     this.fileSuggest?.destroy();
     this.fileSuggest = null;
+
+    // Cleanup CommandSuggest
+    this.commandSuggest?.destroy();
+    this.commandSuggest = null;
 
     // Cleanup SelectionChips
     this.selectionChips?.destroy();
@@ -867,6 +892,264 @@ export class ChatView extends ItemView {
 
     // Use custom message if provided, otherwise default
     this.statusIndicator.setText(message || statusText[status]);
+  }
+
+  /**
+   * Update available slash commands from ACP
+   */
+  updateAvailableCommands(commands: import("../acpClient").AvailableCommand[]): void {
+    this.commandSuggest?.setCommands(commands);
+  }
+
+  /**
+   * Handle builtin slash commands
+   */
+  private handleBuiltinCommand(command: string): void {
+    switch (command) {
+      case "/clear":
+        this.clearConversation();
+        break;
+
+      case "/help":
+        this.showHelp();
+        break;
+
+      case "/status":
+        this.showStatus();
+        break;
+
+      case "/reconnect":
+        void this.reconnect();
+        break;
+
+      case "/compact":
+        this.toggleCompactMode();
+        break;
+
+      case "/cost":
+        this.showCost();
+        break;
+
+      case "/model":
+        this.showModel();
+        break;
+
+      case "/modes":
+        this.showModes();
+        break;
+
+      case "/config":
+        this.showConfig();
+        break;
+
+      default:
+        this.addMessage({
+          role: "assistant",
+          content: `Unknown command: ${command}`,
+          timestamp: new Date(),
+        });
+    }
+  }
+
+  private clearConversation(): void {
+    this.messages = [];
+    this.messagesContainer.empty();
+    this.toolCallCards.clear();
+    this.pendingEditsByFile.clear();
+    this.pendingPermissionsByFile.clear();
+    this.autoApprovedFiles.clear();
+    this.currentThinkingBlock = null;
+    this.currentStreamingEl = null;
+    this.currentAssistantMessage = "";
+
+    this.addMessage({
+      role: "assistant",
+      content: "Conversation cleared.",
+      timestamp: new Date(),
+    });
+  }
+
+  private showHelp(): void {
+    const helpText = `## Available Commands
+
+| Command | Description |
+|---------|-------------|
+| \`/clear\` | Clear the conversation history |
+| \`/help\` | Show this help message |
+| \`/status\` | Show connection status |
+| \`/reconnect\` | Reconnect to Claude Code |
+| \`/compact\` | Toggle compact display mode |
+| \`/cost\` | Show session cost info |
+| \`/model\` | Show current model |
+| \`/modes\` | Show available modes |
+| \`/config\` | Show configuration options |
+
+## Keyboard Shortcuts
+
+- **Enter** — Send message
+- **Shift+Enter** — New line
+- **Cmd/Ctrl+L** — Add selection to chat
+- **\`[[\`** — Insert file reference
+
+## File References
+
+Use \`[[filename]]\` to reference vault files in your messages.`;
+
+    this.addMessage({
+      role: "assistant",
+      content: helpText,
+      timestamp: new Date(),
+    });
+  }
+
+  private showStatus(): void {
+    const connected = this.plugin.isConnected();
+    const sessionId = this.plugin.getSessionId?.() ?? "N/A";
+    const commandsCount = this.plugin.getAvailableCommands().length;
+
+    const statusText = `## Connection Status
+
+| Property | Value |
+|----------|-------|
+| **Status** | ${connected ? "🟢 Connected" : "🔴 Disconnected"} |
+| **Session ID** | \`${sessionId}\` |
+| **ACP Commands** | ${commandsCount} |
+| **Messages** | ${this.messages.length} |
+| **Tool Calls** | ${this.toolCallCards.size} |`;
+
+    this.addMessage({
+      role: "assistant",
+      content: statusText,
+      timestamp: new Date(),
+    });
+  }
+
+  private async reconnect(): Promise<void> {
+    this.addMessage({
+      role: "assistant",
+      content: "Reconnecting...",
+      timestamp: new Date(),
+    });
+
+    try {
+      await this.plugin.disconnect();
+      await this.plugin.connect();
+    } catch (error) {
+      this.addMessage({
+        role: "assistant",
+        content: `Reconnection failed: ${(error as Error).message}`,
+        timestamp: new Date(),
+      });
+    }
+  }
+
+  private toggleCompactMode(): void {
+    const chatContainer = this.containerEl.querySelector(".chat-container");
+    if (chatContainer) {
+      chatContainer.toggleClass("compact-mode", !chatContainer.hasClass("compact-mode"));
+      const isCompact = chatContainer.hasClass("compact-mode");
+      this.addMessage({
+        role: "assistant",
+        content: `Compact mode ${isCompact ? "enabled" : "disabled"}.`,
+        timestamp: new Date(),
+      });
+    }
+  }
+
+  private showCost(): void {
+    // Cost information is not available via ACP yet
+    this.addMessage({
+      role: "assistant",
+      content: `## Session Cost
+
+⚠️ Cost tracking is not yet available via ACP protocol.
+
+For usage information, check [console.anthropic.com](https://console.anthropic.com).`,
+      timestamp: new Date(),
+    });
+  }
+
+  private showModel(): void {
+    const currentModel = this.plugin.getCurrentModel?.();
+    const availableModels = this.plugin.getAvailableModels?.() ?? [];
+
+    let content = `## Current Model\n\n`;
+
+    if (currentModel) {
+      content += `**Active**: \`${currentModel.modeId || currentModel.id || "default"}\`\n\n`;
+    } else {
+      content += `**Active**: Using default model\n\n`;
+    }
+
+    if (availableModels.length > 0) {
+      content += `### Available Models\n\n`;
+      for (const model of availableModels) {
+        content += `- **${model.name}** (\`${model.id}\`)${model.description ? `: ${model.description}` : ""}\n`;
+      }
+    } else {
+      content += `_No model list available from ACP._`;
+    }
+
+    this.addMessage({
+      role: "assistant",
+      content,
+      timestamp: new Date(),
+    });
+  }
+
+  private showModes(): void {
+    const currentMode = this.plugin.getCurrentMode?.();
+    const availableModes = this.plugin.getAvailableModes?.() ?? [];
+
+    let content = `## Session Modes\n\n`;
+
+    if (currentMode) {
+      content += `**Active**: \`${currentMode.modeId || "default"}\`\n\n`;
+    } else {
+      content += `**Active**: Default mode\n\n`;
+    }
+
+    if (availableModes.length > 0) {
+      content += `### Available Modes\n\n`;
+      for (const mode of availableModes) {
+        content += `- **${mode.name}** (\`${mode.id}\`)${mode.description ? `: ${mode.description}` : ""}\n`;
+      }
+    } else {
+      content += `_No modes list available from ACP._`;
+    }
+
+    this.addMessage({
+      role: "assistant",
+      content,
+      timestamp: new Date(),
+    });
+  }
+
+  private showConfig(): void {
+    const configOptions = this.plugin.getConfigOptions?.() ?? [];
+
+    let content = `## Configuration Options\n\n`;
+
+    if (configOptions.length > 0) {
+      for (const option of configOptions) {
+        content += `### ${option.name}\n`;
+        content += `- **ID**: \`${option.id}\`\n`;
+        content += `- **Value**: \`${option.currentValue ?? "default"}\`\n`;
+        if (option.category) {
+          content += `- **Category**: ${option.category}\n`;
+        }
+        content += `\n`;
+      }
+    } else {
+      content += `_No configuration options available from ACP._\n\n`;
+      content += `Plugin settings can be configured in Obsidian Settings > Community Plugins > Claude Code.`;
+    }
+
+    this.addMessage({
+      role: "assistant",
+      content,
+      timestamp: new Date(),
+    });
   }
 
   // ===== Selection Methods (Cmd+L) =====

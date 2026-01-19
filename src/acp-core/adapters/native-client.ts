@@ -284,6 +284,9 @@ export class NativeAcpClient implements IAcpClient {
         mcpServers,
       });
 
+      // Log session result for debugging
+      console.debug("[NativeAcpClient] Session result:", JSON.stringify(sessionResult, null, 2));
+
       // Store session mode info if available
       if (sessionResult.modes) {
         this.availableModes = sessionResult.modes.availableModes.map((m) => ({
@@ -720,6 +723,9 @@ export class NativeAcpClient implements IAcpClient {
 
   private async handleSessionUpdate(params: acp.SessionNotification): Promise<void> {
     const update = params.update;
+
+    // Log all session updates for debugging
+    console.debug("[NativeAcpClient] Session update:", update.sessionUpdate, update);
 
     switch (update.sessionUpdate) {
       case "user_message_chunk":

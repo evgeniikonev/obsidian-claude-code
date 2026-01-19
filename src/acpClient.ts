@@ -23,6 +23,9 @@ import {
   type ToolCallStatus,
   type ToolCallLocation,
   type ToolCallContent,
+  type AvailableCommand,
+  type AvailableCommandsUpdate,
+  type CommandsUpdateEvent,
 } from "./acp-core";
 import {
   ensureBinaryAvailable,
@@ -53,9 +56,15 @@ export interface AcpClientEvents {
   onConnected: () => void;
   onDisconnected: () => void;
 
+  // Slash commands
+  onAvailableCommandsUpdate?: (commands: AvailableCommand[]) => void;
+
   // Legacy (for backward compatibility)
   onMessage?: (text: string) => void;
 }
+
+// Re-export for consumers
+export type { AvailableCommand };
 
 // Types that match the SDK's structure
 export interface ToolCallData {
@@ -109,9 +118,14 @@ export class ObsidianAcpClient {
   private client: IAcpClient | null = null;
   private currentSessionId: string | null = null;
   private events: AcpClientEvents;
+  private availableCommands: AvailableCommand[] = [];
 
   constructor(events: AcpClientEvents) {
     this.events = events;
+  }
+
+  getAvailableCommands(): AvailableCommand[] {
+    return this.availableCommands;
   }
 
   async connect(
@@ -271,6 +285,14 @@ export class ObsidianAcpClient {
         this.events.onMessageComplete();
         break;
 
+      case "commands_update":
+        // Stream event for commands update
+        const cmdEvent = event as CommandsUpdateEvent;
+        this.availableCommands = cmdEvent.commands;
+        console.debug("[ACP] Commands update (stream):", this.availableCommands.length, this.availableCommands.map(c => c.name));
+        this.events.onAvailableCommandsUpdate?.(this.availableCommands);
+        break;
+
       case "error":
         this.events.onError(event.error);
         break;
@@ -325,6 +347,12 @@ export class ObsidianAcpClient {
         break;
 
       case "available_commands_update":
+        const commandsUpdate = update as AvailableCommandsUpdate;
+        this.availableCommands = commandsUpdate.availableCommands;
+        console.debug("[ACP] Available commands updated:", this.availableCommands.length, this.availableCommands.map(c => c.name));
+        this.events.onAvailableCommandsUpdate?.(this.availableCommands);
+        break;
+
       case "current_mode_update":
       case "config_option_update":
       case "session_info_update":
@@ -361,5 +389,25 @@ export class ObsidianAcpClient {
 
   getSessionId(): string | null {
     return this.currentSessionId;
+  }
+
+  getCurrentMode(): { modeId: string } | null {
+    return this.client?.getCurrentMode() ?? null;
+  }
+
+  getAvailableModes(): Array<{ id: string; name: string; description?: string }> {
+    return this.client?.getAvailableModes() ?? [];
+  }
+
+  getCurrentModel(): { modeId?: string; id?: string } | null {
+    return this.client?.getCurrentModel() ?? null;
+  }
+
+  getAvailableModels(): Array<{ id: string; name: string; description?: string }> {
+    return this.client?.getAvailableModels() ?? [];
+  }
+
+  getConfigOptions(): Array<{ id: string; name: string; currentValue?: string; category?: string }> {
+    return this.client?.getConfigOptions() ?? [];
   }
 }
