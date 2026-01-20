@@ -1,3 +1,8 @@
+⚠️ This repository has moved
+
+The active version is maintained here:
+https://github.com/SmartAndPoint/obsidian-claude-code
+
 # Claude Code Integration for Obsidian
 
 Use **Claude Code** — Anthropic's AI coding assistant — directly inside Obsidian.
